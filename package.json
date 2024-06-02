@@ -1,6 +1,6 @@
 {
     "name": "@sugoroku-y/p-limit",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "description": "alternative p-limit",
     "license": "MIT",
     "main": "./lib/index.js",
