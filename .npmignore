@@ -1,0 +1,15 @@
+/lib/**/*.map
+/src/
+/coverage/
+/.vscode/
+*.tgz
+*.zip
+/tests/
+/.eslint*
+/.prettier*
+/jest.*
+/jest-*
+tsconfig*.json
+/tools/
+/.github/
+.markdownlint-cli2.jsonc

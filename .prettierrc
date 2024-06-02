@@ -1,0 +1,19 @@
+{
+    "singleQuote": true,
+    "tabWidth": 4,
+    "overrides": [
+        {
+            "files": [".eslintrc", ".prettierrc", "*.jsonc"],
+            "options": {
+                "parser": "json",
+                "trailingComma": "none"
+            }
+        },
+        {
+            "files": ["*.md"],
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ]
+}

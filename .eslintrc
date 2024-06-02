@@ -1,0 +1,154 @@
+{
+    "root": true,
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        "plugin:jsdoc/recommended-typescript-error",
+        "plugin:eslint-comments/recommended",
+        "plugin:import/typescript",
+        "plugin:jest/recommended",
+        "plugin:jest/style",
+        "prettier"
+    ],
+    "plugins": [
+        "jest",
+        "jsdoc",
+        "import",
+        "unused-imports",
+        "@typescript-eslint"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "ecmaVersion": 2021,
+        "sourceType": "commonjs",
+        "project": [
+            "tsconfig.json",
+            "tests/tsconfig.json",
+            "tsconfig-eslint.json"
+        ]
+    },
+    "env": {
+        "jest/globals": true,
+        "es2021": true,
+        "node": true
+    },
+    "settings": {
+        "import/resolver": {
+            "node": {
+                "extensions": [".js", ".ts"]
+            },
+            "typescript": {
+                "project": "./"
+            }
+        }
+    },
+    "rules": {
+        // テストケースにはitではなくtestを使う
+        "jest/consistent-test-it": [
+            "error",
+            {
+                "fn": "test"
+            }
+        ],
+        // テストケースは必ずdescribeの中に入れる。
+        "jest/require-top-level-describe": ["error"],
+        "jsdoc/require-jsdoc": [
+            "error",
+            {
+                "publicOnly": true,
+                "contexts": ["TSTypeAliasDeclaration"]
+            }
+        ],
+        "jsdoc/require-description": [
+            "error",
+            {
+                "contexts": ["FunctionDeclaration", "TSTypeAliasDeclaration"]
+            }
+        ],
+        "jsdoc/check-tag-names": [
+            "error",
+            {
+                "definedTags": ["hidden", "typeParam", "remark"]
+            }
+        ],
+        "eslint-comments/no-use": [
+            "error",
+            {
+                "allow": [
+                    "eslint-enable",
+                    "eslint-disable",
+                    "eslint-disable-line",
+                    "eslint-disable-next-line"
+                ]
+            }
+        ],
+        "eslint-comments/no-unused-disable": "error",
+        "eslint-comments/require-description": "error",
+        "no-param-reassign": "error",
+        "no-console": "off",
+        "@typescript-eslint/await-thenable": "error",
+        "@typescript-eslint/no-floating-promises": [
+            "error",
+            {
+                "ignoreIIFE": true
+            }
+        ],
+        "no-void": [
+            "error",
+            {
+                "allowAsStatement": true
+            }
+        ],
+        "@typescript-eslint/require-await": "error",
+        "@typescript-eslint/no-non-null-assertion": "error",
+        "import/no-anonymous-default-export": [
+            "error",
+            {
+                "allowObject": true
+            }
+        ],
+        "import/extensions": ["error", "never"],
+        "import/no-extraneous-dependencies": [
+            "error",
+            {
+                "devDependencies": ["**/tests/**"],
+                "optionalDependencies": false
+            }
+        ],
+        "import/order": ["error"],
+        // テンプレートリテラルでundefinedやunknownを使えるように
+        "@typescript-eslint/restrict-template-expressions": "off",
+        // _で始まる変数/引数等は対象外
+        "@typescript-eslint/no-unused-vars": [
+            "error",
+            {
+                "argsIgnorePattern": "^_",
+                "varsIgnorePattern": "^_"
+            }
+        ]
+    },
+    "overrides": [
+        {
+            "files": ["**/tests/**"],
+            "rules": {
+                "jsdoc/require-jsdoc": "off",
+                "import/no-extraneous-dependencies": "off"
+            }
+        },
+        {
+            "files": "*.cjs",
+            "rules": {
+                "@typescript-eslint/no-var-requires": "off",
+                "@typescript-eslint/no-unsafe-assignment": "off",
+                "import/extensions": [
+                    "error",
+                    {
+                        "json": "always"
+                    }
+                ],
+                "import/order": "off",
+                "jsdoc/no-types": "off"
+            }
+        }
+    ]
+}
