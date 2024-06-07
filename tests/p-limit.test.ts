@@ -1,26 +1,69 @@
 import pLimit from '../src';
 
 describe('p-limit', () => {
+    //        |        0|      100|      200|      300|      400|      500|      600|      700|      800|      900|     1000|     1100|
+    // 0      |p[       |         |]        |         |         |         |         |         |         |         |         |         |
+    // 1      |p[       |         |         |         |         |         |         |]        |         |         |         |         |
+    // 2      |p[       |]        |         |         |         |         |         |         |         |         |         |         |
+    // 3      |p        |[x       |         |         |         |         |         |         |         |         |         |         |
+    // 4      |p        |[        |         |         |]        |         |         |         |         |         |         |         |
+    // 5      |p        |         |[        |         |         |]        |         |         |         |         |         |         |
+    // 6      |p        |         |         |-        |-        |-        |-        |-        |-        |-        |-        |-        |
+    // cq     |         |         |         |!        |         |         |         |         |         |         |         |         |
+    // 100    |         |         |         |p        |[        |         |]        |         |         |         |         |         |
+    // 101    |         |         |         |p        |         |[        |         |         |         |]        |         |         |
+    // 102    |         |         |         |p        |         |         |[        |         |]        |         |         |         |
+    // 103    |         |         |         |p        |         |         |         |[        |         |         |         |]        |
+    // 104    |         |         |         |p        |         |         |         |         |[        |         |]        |         |
     const timeoutElapse = {
-        0: 800,
-        1: 200,
-        2: 600,
-        3: 500,
-        4: 600,
-        5: 400,
+        0: 200,
+        1: 700,
+        2: 100,
+        3: -1,
+        4: 300,
+        5: 300,
         6: 100,
-        100: 400,
-        101: 200,
-        102: 500,
-        103: 200,
+        100: 200,
+        101: 400,
+        102: 200,
+        103: 400,
         104: 200,
     } as const;
+    const clearQueueTiming = 300;
+    const startLog = [
+        // startはidの順番通りに並ぶ
+        [0, 1, 6],
+        [1, 2, 5],
+        [2, 3, 4],
+        [3, 3, 3],
+        [4, 3, 2],
+        [5, 3, 1],
+        // 6の開始前にclearQueueが呼ばれる
+        [100, 3, 4],
+        [101, 3, 3],
+        [102, 3, 2],
+        [103, 3, 1],
+        [104, 3, 0],
+    ] as const;
+    const endLog = [
+        [2, 3, 4],
+        // 3は開始直後に例外で終了
+        [0, 3, 2],
+        // clearQueueが呼ばれたあと5つがQueueに積まれる
+        [4, 3, 5],
+        [5, 3, 4],
+        [100, 3, 3],
+        [1, 3, 2],
+        [102, 3, 1],
+        [101, 3, 0],
+        [104, 2, 0],
+        [103, 1, 0],
+    ] as const;
     test('call', async () => {
         const limit = pLimit(3);
         const mockStartEach = jest.fn();
         const mockEndEach = jest.fn();
         const mockEndAll = jest.fn();
-        const errorOccurred = 3;
         void Promise.allSettled(
             initializeArray(7, (i) =>
                 limit(
@@ -30,7 +73,7 @@ describe('p-limit', () => {
                             limit.activeCount,
                             limit.pendingCount,
                         );
-                        if (id === errorOccurred) {
+                        if (timeoutElapse[id] < 0) {
                             throw new Error();
                         }
                         await timeout(timeoutElapse[id]);
@@ -42,7 +85,7 @@ describe('p-limit', () => {
             ),
         ).then(mockEndAll);
 
-        await timeout(600);
+        await timeout(clearQueueTiming);
         limit.clearQueue();
         const settled = await Promise.allSettled(
             initializeArray(5, (i) =>
@@ -67,29 +110,8 @@ describe('p-limit', () => {
         expect(settled).toEqual(
             initializeArray(5, (id) => ({ status, value: `id: ${id + 100}` })),
         );
-        expect(mockStartEach.mock.calls).toEqual([
-            [0, 1, 6],
-            [1, 2, 5],
-            [2, 3, 4],
-            [3, 3, 3],
-            [4, 3, 2],
-            [100, 3, 4],
-            [101, 3, 3],
-            [102, 3, 2],
-            [103, 3, 1],
-            [104, 3, 0],
-        ]);
-        expect(mockEndEach.mock.calls).toEqual([
-            [expect.range({ min: 0, max: 2 }), 3, 4],
-            [expect.range({ min: 0, max: 2 }), 3, 5],
-            [expect.range({ min: 0, max: 2 }), 3, 4],
-            [4, 3, 3],
-            [expect.range({ min: 100, max: 104 }), 3, 2],
-            [expect.range({ min: 100, max: 104 }), 3, 1],
-            [expect.range({ min: 100, max: 104 }), 3, 0],
-            [expect.range({ min: 100, max: 104 }), 2, 0],
-            [expect.range({ min: 100, max: 104 }), 1, 0],
-        ]);
+        expect(mockStartEach.mock.calls).toEqual(startLog);
+        expect(mockEndEach.mock.calls).toEqual(endLog);
     });
 });
 
@@ -103,58 +125,3 @@ function initializeArray<T>(
 ): Array<T> {
     return Array.from({ length }, (_, i) => initializer(i));
 }
-
-type MinimumSpec = { min: number } | { minExclusive: number };
-type MaximumSpec = { max: number } | { maxExclusive: number };
-
-declare global {
-    // eslint-disable-next-line @typescript-eslint/no-namespace -- jestの拡張
-    namespace jest {
-        interface Expect {
-            range(
-                spec: MinimumSpec | MaximumSpec | (MinimumSpec & MaximumSpec),
-            ): number;
-        }
-    }
-}
-
-function range(
-    this: jest.MatcherContext,
-    receive: unknown,
-    spec: object,
-): jest.CustomMatcherResult {
-    if (typeof receive !== 'number') {
-        throw new Error(`unsupported type: ${typeof receive}`);
-    }
-    if (
-        typeof spec !== 'object' ||
-        spec === null ||
-        !(
-            ('min' in spec && typeof spec.min === 'number') ||
-            ('minExclusive' in spec && typeof spec.minExclusive === 'number') ||
-            ('max' in spec && typeof spec.max === 'number') ||
-            ('maxExclusive' in spec && typeof spec.maxExclusive === 'number')
-        )
-    ) {
-        throw new Error(`spec is not range: ${JSON.stringify(spec)}`);
-    }
-    return {
-        pass:
-            ('min' in spec && typeof spec.min === 'number'
-                ? receive >= spec.min
-                : true) &&
-            ('minExclusive' in spec && typeof spec.minExclusive === 'number'
-                ? receive > spec.minExclusive
-                : true) &&
-            ('max' in spec && typeof spec.max === 'number'
-                ? receive <= spec.max
-                : true) &&
-            ('maxExclusive' in spec && typeof spec.maxExclusive === 'number'
-                ? receive < spec.maxExclusive
-                : true),
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asymmetric matcherではmessageを使用しない
-        message: undefined!,
-    };
-}
-
-expect.extend({ range });
