@@ -1,18 +1,30 @@
 # @sugoroku-y/p-limit
 
-Alternative [p-limit](https://github.com/sindresorhus/p-limit).
+The another [p-limit](https://github.com/sindresorhus/p-limit).
 
-JEST内で出力されるメッセージを比較するためのカスタム非対称マッチャー。
+もうひとつの[p-limit](https://github.com/sindresorhus/p-limit)。
+
+[![TypeScript](https://img.shields.io/badge/-TypeScript-404040.svg?logo=TypeScript)](https://www.typescriptlang.org/) [![JavaScript](https://img.shields.io/badge/-JavaScript-404040.svg?logo=javascript)](https://developer.mozilla.org/en-US/docs/Web/JavaScript) [![GitHub Packages](https://img.shields.io/badge/-GitHub%20Packages-181717.svg?logo=github&style=flat)](https://github.com/sugoroku-y/p-limit/pkgs/npm/p-limit) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](./LICENSE) [![Coverage Status](https://coveralls.io/repos/github/sugoroku-y/p-limit/badge.svg)](https://coveralls.io/github/sugoroku-y/p-limit) [![Publish package to GitHub Packages](https://github.com/sugoroku-y/p-limit/actions/workflows/publish.yml/badge.svg)](https://github.com/sugoroku-y/p-limit/actions/workflows/publish.yml) [![Push Coverage to Coveralls](https://github.com/sugoroku-y/p-limit/actions/workflows/coverage.yml/badge.svg)](https://github.com/sugoroku-y/p-limit/actions/workflows/coverage.yml)
+
+## Difference
+
+Instead of using Queue as in [p-limit](https://github.com/sindresorhus/p-limit), [`Promise.race`](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise/race) is used to limit the maximum number of concurrent executions.
+
+[p-limit](https://github.com/sindresorhus/p-limit)のようにQueueを使用するのではなく、[`Promise.race`](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise/race)を使用して最大同時実行数の制限を行っています。
 
 ## Install
+
+Execute the following command.
 
 以下のコマンドを実行してください。
 
 ```bash
-npm install --save-dev sugoroku-y/p-limit
+npm install sugoroku-y/p-limit
 ```
 
 ## Usage
+
+First, import `p-limit`.
 
 まず、`p-limit`をimportします。
 
@@ -20,11 +32,15 @@ npm install --save-dev sugoroku-y/p-limit
 import pLimit from '@sugoroku-y/p-limit';
 ```
 
+Next, call `pLimit` to generate a `limit` function, specifying the maximum number of parallel executions.
+
 次に、並列実行する最大数を指定して`pLimit`を呼び出し`limit`関数を生成します。
 
 ```ts
 const limit = pLimit(5);
 ```
+
+Then, pass to the `limit` function the function to be executed and the arguments to be passed to it.
 
 あとは実行する関数とそれに渡す引数を`limit`関数に渡してやるだけです。
 
@@ -62,7 +78,7 @@ export interface LimitFunction {
   /** 現在実行待機中のタスクの数 */
   pendingCount: number;
   /**
-   * 現在実行大気中のタスクをクリアして実行開始しないようにします。
+   * 現在実行待機中のタスクをクリアして実行開始しないようにします。
    *
    * すでに実行開始済のタスクには何もしません。
    */
