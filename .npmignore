@@ -1,4 +1,5 @@
 /lib/**/*.map
+/lib/**/*.d.mts
 /src/
 /coverage/
 /.vscode/

@@ -3,7 +3,10 @@
     "version": "0.0.1",
     "description": "alternative p-limit",
     "license": "MIT",
-    "main": "./lib/index.js",
+    "exports": {
+        "import": "./lib/index.mjs",
+        "require": "./lib/index.js"
+    },
     "types": "./lib/index.d.ts",
     "author": {
         "url": "https://qiita.com/sugoroku_y",
@@ -17,6 +20,7 @@
         "test": "jest",
         "prebuild": "npm test --coverage --lint",
         "build": "tsc",
+        "postbuild": "node tools/compare.cjs lib/index.d.mts lib/index.d.ts",
         "preversioncheck": "npm run build",
         "versioncheck": "node tools/versioncheck.cjs",
         "preversion": "npm run versioncheck"

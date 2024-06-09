@@ -146,6 +146,7 @@
                         "json": "always"
                     }
                 ],
+                "import/no-extraneous-dependencies": "off",
                 "import/order": "off",
                 "jsdoc/no-types": "off"
             }
