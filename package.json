@@ -1,7 +1,7 @@
 {
     "name": "@sugoroku-y/p-limit",
     "version": "0.0.2",
-    "description": "alternative p-limit",
+    "description": "the another p-limit",
     "license": "MIT",
     "exports": {
         "import": "./lib/index.mjs",
