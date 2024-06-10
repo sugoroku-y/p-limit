@@ -1,4 +1,4 @@
-import pLimit from '../src';
+import pLimit, { type LimitFunction } from '../src';
 
 describe('p-limit', () => {
     //        |        0|      100|      200|      300|      400|      500|      600|      700|      800|      900|     1000|     1100|
@@ -59,7 +59,12 @@ describe('p-limit', () => {
         [104, 2, 0],
         [103, 1, 0],
     ] as const;
-    test('call', async () => {
+    test.each([
+        ['original', undefined],
+        ['this', pLimit],
+    ])('call %s', async (_, pLimit) => {
+        // eslint-disable-next-line no-param-reassign -- --
+        pLimit ??= (await import('p-limit')).default;
         const limit = pLimit(3);
         const mockStartEach = jest.fn();
         const mockEndEach = jest.fn();

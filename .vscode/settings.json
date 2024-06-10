@@ -1,4 +1,7 @@
 {
+    "jestrunner.debugOptions": {
+        "runtimeArgs": ["--experimental-vm-modules"]
+    },
     "typescript.tsdk": "node_modules/typescript/lib",
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
