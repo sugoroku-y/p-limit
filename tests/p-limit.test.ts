@@ -118,6 +118,27 @@ describe('p-limit', () => {
         expect(mockStartEach.mock.calls).toEqual(startLog);
         expect(mockEndEach.mock.calls).toEqual(endLog);
     });
+
+    test('performance', async () => {
+        const { default: original } = await import('p-limit');
+
+        const originalResult = await getPerformance(original);
+        const { avg, max, queuing, count } = await getPerformance(pLimit);
+        console.log(
+            'original:',
+            originalResult.max,
+            originalResult.avg,
+            originalResult.queuing,
+            originalResult.count,
+        );
+        console.log('this package:', max, avg, queuing, count);
+
+        // タスクの登録に関してはキューに積まないため圧倒的に速くなる
+        expect(queuing).toBeLessThan(originalResult.queuing);
+        // タスクの終了から次のタスクの開始までにかかる時間は不安定
+        // expect(max).toBeLessThan(originalResult.max);
+        // expect(avg).toBeLessThan(originalResult.avg);
+    });
 });
 
 function timeout(elapse: number): Promise<void> {
@@ -129,4 +150,28 @@ function initializeArray<T>(
     initializer: (i: number) => T,
 ): Array<T> {
     return Array.from({ length }, (_, i) => initializer(i));
+}
+
+async function getPerformance(pLimit: (concurrency: number) => LimitFunction) {
+    const limit = pLimit(10);
+    const taskCount = 1000;
+    const intervals: number[] = [];
+    let last: number | undefined;
+    const start = performance.now();
+    const allPromise = Promise.all(
+        initializeArray(taskCount, () =>
+            limit(async () => {
+                if (last !== undefined) {
+                    intervals.push(performance.now() - last);
+                }
+                await timeout(0);
+                last = performance.now();
+            }),
+        ),
+    );
+    const queuing = (performance.now() - start) / taskCount;
+    await allPromise;
+    const max = Math.max(...intervals);
+    const avg = intervals.reduce((a, b) => a + b) / intervals.length;
+    return { max, avg, queuing, count: intervals.length };
 }
