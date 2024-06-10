@@ -119,6 +119,32 @@ describe('p-limit', () => {
         expect(mockEndEach.mock.calls).toEqual(endLog);
     });
 
+    test('no-limit', async () => {
+        const limit = pLimit(Infinity);
+        const promise = Promise.all(
+            initializeArray(10, (i) =>
+                limit(async () => {
+                    await timeout(0);
+                    return i;
+                }),
+            ),
+        );
+        expect(limit.activeCount).toBe(10);
+        expect(limit.pendingCount).toBe(0);
+        expect(() => limit.clearQueue()).not.toThrow();
+        expect(await promise).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    });
+
+    test('error', () => {
+        // @ts-expect-error 数値以外が指定されたら例外を投げることの確認
+        expect(() => pLimit('-1')).toThrow();
+        expect(() => pLimit(-1)).toThrow();
+        expect(() => pLimit(1.5)).toThrow();
+        expect(() => pLimit(-Infinity)).toThrow();
+        expect(() => pLimit(NaN)).toThrow();
+        expect(() => pLimit(Number.MAX_SAFE_INTEGER)).not.toThrow();
+        expect(() => pLimit(Infinity)).not.toThrow();
+    });
     test('performance', async () => {
         const { default: original } = await import('p-limit');
 
