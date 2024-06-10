@@ -23,6 +23,11 @@ export interface LimitFunction {
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
  * @param maxWorkers 並列実行する最大数を指定します。
+ *
+ * 正の整数値、もしくは`Infinity`を指定できます。
+ *
+ * ただし、 $2^32$ 以上を指定した場合、並列実行数の制限を行いません。
  * @returns 生成した`limit`関数を返します。
+ * @throws maxWorkersに不正な値(`Infinity`と正の整数以外)を指定したときに例外を投げます。
  */
 export default function pLimit(maxWorkers: number): LimitFunction;
