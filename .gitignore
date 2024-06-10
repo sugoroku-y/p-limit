@@ -2,3 +2,5 @@
 /coverage/
 *.tgz
 *.zip
+/tests/sample/cjs/
+/tests/sample/esm/
