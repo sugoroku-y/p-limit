@@ -14,9 +14,9 @@ export interface LimitFunction {
     ): Promise<ReturnType>;
 
     /** 現在同時実行中のタスクの数 */
-    activeCount: number;
+    readonly activeCount: number;
     /** 現在実行待機中のタスクの数 */
-    pendingCount: number;
+    readonly pendingCount: number;
     /**
      * 現在実行待機中のタスクをクリアして実行開始しないようにします。
      *
