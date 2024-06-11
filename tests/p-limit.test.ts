@@ -149,21 +149,16 @@ describe('p-limit', () => {
         const { default: original } = await import('p-limit');
 
         const originalResult = await getPerformance(original);
-        const { avg, max, queuing, count } = await getPerformance(pLimit);
-        console.log(
-            'original:',
-            originalResult.max,
-            originalResult.avg,
-            originalResult.queuing,
-            originalResult.count,
-        );
-        console.log('this package:', max, avg, queuing, count);
+        const thisResult = await getPerformance(pLimit);
+        console.log('original:', originalResult, 'this package:', thisResult);
 
         // タスクの登録に関してはキューに積まないため圧倒的に速くなる
-        expect(queuing).toBeLessThan(originalResult.queuing);
-        // タスクの終了から次のタスクの開始までにかかる時間は不安定
+        expect(thisResult.queuing).toBeLessThan(originalResult.queuing);
+        // タスクの終了から次のタスクの開始までにかかる時間では遅い
         // expect(max).toBeLessThan(originalResult.max);
         // expect(avg).toBeLessThan(originalResult.avg);
+        // 総合で速くなってれば良し
+        expect(thisResult.score).toBeLessThan(originalResult.score);
     });
 });
 
@@ -195,9 +190,12 @@ async function getPerformance(pLimit: (concurrency: number) => LimitFunction) {
             }),
         ),
     );
+    // タスクの登録にかかる時間
     const queuing = (performance.now() - start) / taskCount;
     await allPromise;
+    // タスクが完了してから次のタスクを開始するまでの時間
     const max = Math.max(...intervals);
     const avg = intervals.reduce((a, b) => a + b) / intervals.length;
-    return { max, avg, queuing, count: intervals.length };
+    // queuing + avgをパフォーマンス計測の対象とする
+    return { max, avg, queuing, score: queuing + avg };
 }
