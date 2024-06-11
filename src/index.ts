@@ -34,6 +34,15 @@ type FunctionType<T> = T extends (
 type Descriptors<T extends object> = {
     [Key in keyof T]: TypedPropertyDescriptor<T[Key]>;
 };
+
+const squash = () => {};
+const neverResolved = new Promise<never>(squash);
+
+const cache: Array<() => number> = [];
+function returnIndex(index: number): () => number {
+    return (cache[index] ??= () => index);
+}
+
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
  * @param maxWorkers 並列実行する最大数を指定します。
@@ -72,11 +81,11 @@ export default function pLimit(maxWorkers: number): LimitFunction {
         };
         return Object.defineProperties(limit, {
             // 待機中のタスクは常になし
-            pendingCount: { get: () => 0 },
+            pendingCount: { get: returnIndex(0) },
             // activeCountは管理しているものを返す
             activeCount: { get: () => activeCount },
             // 待機中のタスクが常にないのでclearQueueでも何もしない
-            clearQueue: { value: () => {} },
+            clearQueue: { value: squash },
         } satisfies Descriptors<LimitFunction>) as LimitFunction;
     }
     // 指定された数だけ枠を用意しておく
@@ -98,21 +107,22 @@ export default function pLimit(maxWorkers: number): LimitFunction {
         const index = await nextIndex;
         if (current !== context) {
             // contextがリセットされたら古いcontextで始まったtaskは開始しない
-            await new Promise(() => {});
+            return neverResolved;
         }
         --current.pendingCount;
         ++activeCount;
-        // タスクを開始
-        const promise = task(...parameters);
-        // このtaskが完了したらindexを返すPromiseに差し替える
-        slots[index] = Promise.resolve(promise)
-            .catch(() => {})
-            .then(() => {
-                --activeCount;
-                return index;
-            });
-        // taskの返値をそのまま返す
-        return promise;
+        try {
+            // タスクを開始
+            const promise = task(...parameters);
+            // このtaskが完了したらindexを返すPromiseに差し替える
+            slots[index] = Promise.resolve(promise)
+                .catch(squash)
+                .then(returnIndex(index));
+            // taskの返値をそのまま返す
+            return await promise;
+        } finally {
+            --activeCount;
+        }
     };
     return Object.defineProperties(limit, {
         activeCount: { get: () => activeCount },
