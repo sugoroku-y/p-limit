@@ -71,22 +71,30 @@ export default function pLimit(maxWorkers: number): LimitFunction {
     return nLimit(maxWorkers);
 }
 
-function noLimit() {
-    let activeCount = 0;
-    const limit: FunctionType<LimitFunction> = async (task, ...parameters) => {
-        // activeCountの管理だけ行う
-        ++activeCount;
+class ActiveCounter {
+    count = 0;
+    activate = async <P extends unknown[], R>(
+        f: (...p: P) => PromiseLike<R>,
+        ...p: P
+    ): Promise<R> => {
+        ++this.count;
         try {
-            return await task(...parameters);
+            return await f(...p);
         } finally {
-            --activeCount;
+            --this.count;
         }
     };
-    return Object.defineProperties(limit, {
+    getter = () => this.count;
+}
+
+function noLimit() {
+    // activeCountの管理だけ行う
+    const activeCount = new ActiveCounter();
+    return Object.defineProperties(activeCount.activate, {
         // 待機中のタスクは常になし
         pendingCount: { get: returnIndex(0) },
         // activeCountは管理しているものを返す
-        activeCount: { get: () => activeCount },
+        activeCount: { get: activeCount.getter },
         // 待機中のタスクが常にないのでclearQueueでも何もしない
         clearQueue: { value: squash },
     } satisfies Descriptors<LimitFunction>) as LimitFunction;
@@ -100,7 +108,7 @@ function nLimit(length: number) {
     let context = {
         pendingCount: 0,
     };
-    let activeCount = 0;
+    const activeCount = new ActiveCounter();
     const limit: FunctionType<LimitFunction> = async (task, ...parameters) => {
         const current = context;
         ++current.pendingCount;
@@ -113,8 +121,7 @@ function nLimit(length: number) {
             return neverResolved;
         }
         --current.pendingCount;
-        ++activeCount;
-        try {
+        return activeCount.activate(() => {
             // タスクを開始
             const promise = task(...parameters);
             // このtaskが完了したらindexを返すPromiseに差し替える
@@ -122,13 +129,11 @@ function nLimit(length: number) {
                 .catch(squash)
                 .then(returnIndex(index));
             // taskの返値をそのまま返す
-            return await promise;
-        } finally {
-            --activeCount;
-        }
+            return promise;
+        });
     };
     return Object.defineProperties(limit, {
-        activeCount: { get: () => activeCount },
+        activeCount: { get: activeCount.getter },
         pendingCount: { get: () => context.pendingCount },
         clearQueue: {
             value: () => {
