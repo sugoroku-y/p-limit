@@ -66,32 +66,35 @@ export default function pLimit(maxWorkers: number): LimitFunction {
     }
     if (maxWorkers >= 2 ** 32) {
         // 2^32以上は配列を生成できないので同時実行数を制限しない
-        let activeCount = 0;
-        const limit: FunctionType<LimitFunction> = async (
-            task,
-            ...parameters
-        ) => {
-            // activeCountの管理だけ行う
-            ++activeCount;
-            try {
-                return await task(...parameters);
-            } finally {
-                --activeCount;
-            }
-        };
-        return Object.defineProperties(limit, {
-            // 待機中のタスクは常になし
-            pendingCount: { get: returnIndex(0) },
-            // activeCountは管理しているものを返す
-            activeCount: { get: () => activeCount },
-            // 待機中のタスクが常にないのでclearQueueでも何もしない
-            clearQueue: { value: squash },
-        } satisfies Descriptors<LimitFunction>) as LimitFunction;
+        return noLimit();
     }
+    return nLimit(maxWorkers);
+}
+
+function noLimit() {
+    let activeCount = 0;
+    const limit: FunctionType<LimitFunction> = async (task, ...parameters) => {
+        // activeCountの管理だけ行う
+        ++activeCount;
+        try {
+            return await task(...parameters);
+        } finally {
+            --activeCount;
+        }
+    };
+    return Object.defineProperties(limit, {
+        // 待機中のタスクは常になし
+        pendingCount: { get: returnIndex(0) },
+        // activeCountは管理しているものを返す
+        activeCount: { get: () => activeCount },
+        // 待機中のタスクが常にないのでclearQueueでも何もしない
+        clearQueue: { value: squash },
+    } satisfies Descriptors<LimitFunction>) as LimitFunction;
+}
+
+function nLimit(length: number) {
     // 指定された数だけ枠を用意しておく
-    const slots = Array.from({ length: maxWorkers }, (_, i) =>
-        Promise.resolve(i),
-    );
+    const slots = Array.from({ length }, (_, i) => Promise.resolve(i));
     // 空き枠の検索結果を保持するPromise
     let nextIndex = Promise.resolve(NaN);
     let context = {
