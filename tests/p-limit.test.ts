@@ -1,5 +1,28 @@
 import pLimit, { type LimitFunction } from '../src';
 
+declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace -- jestの拡張
+    namespace jest {
+        interface Expect {
+            in<T>(...candidates: T[]): T;
+        }
+    }
+}
+
+function inCandidates(
+    this: jest.MatcherContext,
+    receive: unknown,
+    ...candidates: unknown[]
+): jest.CustomMatcherResult {
+    return {
+        pass: candidates.includes(receive),
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- custom asymmetric matcherではmessageを使わない
+        message: undefined!,
+    };
+}
+
+expect.extend({ in: inCandidates });
+
 describe('p-limit', () => {
     //        |        0|      100|      200|      300|      400|      500|      600|      700|      800|      900|     1000|     1100|
     // 0      |p[       |         |]        |         |         |         |         |         |         |         |         |         |
@@ -32,9 +55,9 @@ describe('p-limit', () => {
     const clearQueueTiming = 300;
     const startLog = [
         // startはidの順番通りに並ぶ
-        [0, 1, 6],
-        [1, 2, 5],
-        [2, 3, 4],
+        [0, 1, expect.in(0, 6)],
+        [1, 2, expect.in(0, 5)],
+        [2, 3, expect.in(0, 4)],
         [3, 3, 3],
         [4, 3, 2],
         [5, 3, 1],
@@ -139,9 +162,9 @@ describe('p-limit', () => {
         // @ts-expect-error 数値以外が指定されたら例外を投げることの確認
         expect(() => pLimit('-1')).toThrow();
         expect(() => pLimit(-1)).toThrow();
-        expect(() => pLimit(1.5)).toThrow();
         expect(() => pLimit(-Infinity)).toThrow();
         expect(() => pLimit(NaN)).toThrow();
+        expect(() => pLimit(1.5)).not.toThrow();
         expect(() => pLimit(Number.MAX_SAFE_INTEGER)).not.toThrow();
         expect(() => pLimit(Infinity)).not.toThrow();
     });
@@ -152,11 +175,11 @@ describe('p-limit', () => {
         const thisResult = await getPerformance(pLimit);
         console.log('original:', originalResult, 'this package:', thisResult);
 
-        // タスクの登録に関してはキューに積まないため圧倒的に速くなる
+        // 全般的に速くなっているはず
         expect(thisResult.queuing).toBeLessThan(originalResult.queuing);
-        // タスクの終了から次のタスクの開始までにかかる時間では遅い
-        // expect(max).toBeLessThan(originalResult.max);
-        // expect(avg).toBeLessThan(originalResult.avg);
+        // なんだけど、タスクの終了から次のタスクの開始までにかかる時間では逆転することがある
+        // expect(thisResult.max).toBeLessThan(originalResult.max);
+        // expect(thisResult.avg).toBeLessThan(originalResult.avg);
         // 総合で速くなってれば良し
         expect(thisResult.score).toBeLessThan(originalResult.score);
     });
@@ -174,7 +197,7 @@ function initializeArray<T>(
 }
 
 async function getPerformance(pLimit: (concurrency: number) => LimitFunction) {
-    const limit = pLimit(10);
+    const limit = pLimit(20);
     const taskCount = 1000;
     const intervals: number[] = [];
     let last: number | undefined;

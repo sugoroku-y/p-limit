@@ -6,7 +6,7 @@ export interface LimitFunction {
      * @template ReturnType タスクが返す返値の型です。
      * @param task 実行するタスクを指定します。
      * @param parameters タスクに渡される引数を指定します。
-     * @returns タスクの実行が完了したらカスクの返値を返すPromiseを返します。
+     * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
      */
     <Parameters extends unknown[], ReturnType>(task: (...parameters: Parameters) => PromiseLike<ReturnType>, ...parameters: Parameters): Promise<ReturnType>;
     /** 現在同時実行中のタスクの数 */
@@ -22,12 +22,10 @@ export interface LimitFunction {
 }
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
- * @param maxWorkers 並列実行する最大数を指定します。
+ * @param concurrency 並列実行する最大数を指定します。
  *
- * 正の整数値、もしくは`Infinity`を指定できます。
- *
- * ただし、 $2^32$ 以上を指定した場合、並列実行数の制限を行いません。
+ * 1以上の数値を指定できます。
  * @returns 生成した`limit`関数を返します。
- * @throws maxWorkersに不正な値(`Infinity`と正の整数以外)を指定したときに例外を投げます。
+ * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
-export default function pLimit(maxWorkers: number): LimitFunction;
+export default function pLimit(concurrency: number): LimitFunction;
