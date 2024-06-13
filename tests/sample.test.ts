@@ -33,7 +33,7 @@ describe('sample', () => {
 
                 void Promise.all(
                     Array.from({ length: 10 }, (_, i) =>
-                        limit(async (id) => {
+                        limit(async (id: number) => {
                             console.log(id, 'start');
                             await new Promise((r) => setTimeout(r, 100 + 900 * Math.random()));
                             console.log(id, 'end');
