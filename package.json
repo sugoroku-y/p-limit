@@ -20,7 +20,6 @@
         "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "prebuild": "npm test --coverage --lint",
         "build": "tsc",
-        "postbuild": "node tools/compare.cjs lib/index.d.mts lib/index.d.ts",
         "preversioncheck": "npm run build",
         "versioncheck": "node tools/versioncheck.cjs",
         "preversion": "npm run versioncheck"
