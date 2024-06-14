@@ -59,21 +59,17 @@ export default function pLimit(concurrency: number) {
     const limit: FunctionType<LimitFunction> = async (task, ...parameters) => {
         if (activeCount >= concurrency) {
             // 余裕がなければ待機
-            await new Promise<void>((resolve) =>
-                // resolveが呼ばれるまで待機
-                pending.enqueue(resolve),
-            );
+            // eslint-disable-next-line @typescript-eslint/unbound-method -- Queueはthisを使っていない
+            await new Promise<void>(pending.enqueue);
         }
         // タスクが実行中にactiveCountが1つだけ増えるように
         ++activeCount;
         try {
             return await task(...parameters);
         } finally {
-            // activeCountを減らしてもconcurrency以上であることはないはずではあるが念の為チェック
-            if (--activeCount < concurrency) {
-                // activeCountが減って余裕ができたので、次のタスクの待機を解除する
-                pending.dequeue()?.();
-            }
+            --activeCount;
+            // activeCountが減って余裕ができたので、次のタスクの待機を解除する
+            pending.dequeue()?.();
         }
     };
     // 各プロパティ/メソッドの用意
