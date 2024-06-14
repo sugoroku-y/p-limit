@@ -57,14 +57,19 @@ export default function pLimit(concurrency: number) {
     // 待機中のタスク
     const pending = Queue<() => void>();
     const limit: FunctionType<LimitFunction> = async (task, ...parameters) => {
+        let timing;
         if (activeCount >= concurrency) {
             // 余裕がなければ待機
             // eslint-disable-next-line @typescript-eslint/unbound-method -- Queueはthisを使っていない
             await new Promise<void>(pending.enqueue);
+        } else {
+            // 余裕がある場合でもactiveCountを増やしてからちょっとだけ待つ
+            timing = Promise.resolve();
         }
         // タスクが実行中にactiveCountが1つだけ増えるように
         ++activeCount;
         try {
+            await timing;
             return await task(...parameters);
         } finally {
             --activeCount;

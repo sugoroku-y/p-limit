@@ -16,7 +16,7 @@ function inCandidates(
     ...candidates: unknown[]
 ): jest.CustomMatcherResult {
     return {
-        pass: candidates.includes(receive),
+        pass: candidates.some((candidate) => this.equals(candidate, receive)),
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- custom asymmetric matcherではmessageを使わない
         message: undefined!,
     };
@@ -56,9 +56,9 @@ describe('p-limit', () => {
     const clearQueueTiming = 300;
     const startLog = [
         // startはidの順番通りに並ぶ
-        [0, 1, expect.in(0, 6)],
-        [1, 2, expect.in(0, 5)],
-        [2, 3, expect.in(0, 4)],
+        expect.in([0, 1, 6], [0, 3, 4]), // このp-limitでは0が開始したときには1と2も開始している
+        expect.in([1, 2, 5], [1, 3, 4]),
+        [2, 3, 4],
         [3, 3, 3],
         [4, 3, 2],
         [5, 3, 1],
