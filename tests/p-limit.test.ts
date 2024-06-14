@@ -1,3 +1,4 @@
+import { AsyncLocalStorage, AsyncResource } from 'async_hooks';
 import pLimit, { type LimitFunction } from '../src';
 
 declare global {
@@ -182,6 +183,112 @@ describe('p-limit', () => {
         // expect(thisResult.avg).toBeLessThan(originalResult.avg);
         // 総合で速くなってれば良し
         expect(thisResult.score).toBeLessThan(originalResult.score);
+    });
+
+    test('async-context-old', async () => {
+        const { default: pLimit } = await import('p-limit');
+        const limit = pLimit(3);
+        const storage = new AsyncLocalStorage();
+        const result = await Promise.all([
+            storage.run('foo', () =>
+                Promise.all(
+                    initializeArray(5, (id) =>
+                        limit(async () => {
+                            await timeout(100);
+                            return `${storage.getStore()}:${id}`;
+                        }),
+                    ),
+                ),
+            ),
+            storage.run('bar', () =>
+                Promise.all(
+                    initializeArray(5, (id) =>
+                        limit(async () => {
+                            await timeout(100);
+                            return `${storage.getStore()}:${id}`;
+                        }),
+                    ),
+                ),
+            ),
+        ]);
+        // オリジナルのp-limitではAsyncResource.bindにより非同期コンテキストの切り替えに対応している
+        expect(result).toEqual([
+            ['foo:0', 'foo:1', 'foo:2', 'foo:3', 'foo:4'],
+            ['bar:0', 'bar:1', 'bar:2', 'bar:3', 'bar:4'],
+        ]);
+    });
+    test('async-context-old without AsyncResource.bind', async () => {
+        const { default: pLimit } = await import('p-limit');
+        // AsyncResource.bindを無効化した状態でオリジナルのp-limitを実行すると
+        const mock = jest
+            .spyOn(AsyncResource, 'bind')
+            .mockImplementation((f) => f);
+        try {
+            const limit = pLimit(3);
+            const storage = new AsyncLocalStorage();
+            const result = await Promise.all([
+                storage.run('foo', () =>
+                    Promise.all(
+                        initializeArray(5, (id) =>
+                            limit(async () => {
+                                await timeout(100);
+                                return `${storage.getStore()}:${id}`;
+                            }),
+                        ),
+                    ),
+                ),
+                storage.run('bar', () =>
+                    Promise.all(
+                        initializeArray(5, (id) =>
+                            limit(async () => {
+                                await timeout(100);
+                                return `${storage.getStore()}:${id}`;
+                            }),
+                        ),
+                    ),
+                ),
+            ]);
+            expect(result).toEqual([
+                ['foo:0', 'foo:1', 'foo:2', 'foo:3', 'foo:4'],
+                ['bar:0', 'bar:1', 'bar:2', 'bar:3', 'bar:4'].map(
+                    // AsyncResource.bindを無効化しているため`bar:n`にならない
+                    (s) => expect.not.stringMatching(s) as string,
+                ),
+            ]);
+        } finally {
+            mock.mockRestore();
+        }
+    });
+    test('async-context', async () => {
+        const limit = pLimit(3);
+        const storage = new AsyncLocalStorage();
+        const result = await Promise.all([
+            storage.run('foo', () =>
+                Promise.all(
+                    initializeArray(5, (id) =>
+                        limit(async () => {
+                            await timeout(100);
+                            return `${storage.getStore()}:${id}`;
+                        }),
+                    ),
+                ),
+            ),
+            storage.run('bar', () =>
+                Promise.all(
+                    initializeArray(5, (id) =>
+                        limit(async () => {
+                            await timeout(100);
+                            return `${storage.getStore()}:${id}`;
+                        }),
+                    ),
+                ),
+            ),
+        ]);
+        // このp-limitではAsyncResource.bindを使用していないが非同期コンテキストの切り替えに対応している
+        expect(result).toEqual([
+            ['foo:0', 'foo:1', 'foo:2', 'foo:3', 'foo:4'],
+            ['bar:0', 'bar:1', 'bar:2', 'bar:3', 'bar:4'],
+        ]);
     });
 });
 
