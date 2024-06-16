@@ -1,29 +1,6 @@
 import { AsyncLocalStorage, AsyncResource } from 'async_hooks';
 import pLimit, { type LimitFunction } from '../src';
 
-declare global {
-    // eslint-disable-next-line @typescript-eslint/no-namespace -- jestの拡張
-    namespace jest {
-        interface Expect {
-            in<T>(...candidates: T[]): T;
-        }
-    }
-}
-
-function inCandidates(
-    this: jest.MatcherContext,
-    receive: unknown,
-    ...candidates: unknown[]
-): jest.CustomMatcherResult {
-    return {
-        pass: candidates.some((candidate) => this.equals(candidate, receive)),
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- custom asymmetric matcherではmessageを使わない
-        message: undefined!,
-    };
-}
-
-expect.extend({ in: inCandidates });
-
 describe('p-limit', () => {
     //        |        0|      100|      200|      300|      400|      500|      600|      700|      800|      900|     1000|     1100|
     // 0      |p[       |         |]        |         |         |         |         |         |         |         |         |         |
@@ -56,8 +33,8 @@ describe('p-limit', () => {
     const clearQueueTiming = 300;
     const startLog = [
         // startはidの順番通りに並ぶ
-        expect.in([0, 1, 6], [0, 3, 4]), // このp-limitでは0が開始したときには1と2も開始している
-        expect.in([1, 2, 5], [1, 3, 4]),
+        [0, 1, 6],
+        [1, 2, 5],
         [2, 3, 4],
         [3, 3, 3],
         [4, 3, 2],
@@ -83,80 +60,99 @@ describe('p-limit', () => {
         [104, 2, 0],
         [103, 1, 0],
     ] as const;
-    test.each([
-        ['original', undefined],
-        ['this', pLimit],
-    ])('call %s', async (_, pLimit) => {
-        // eslint-disable-next-line no-param-reassign -- --
-        pLimit ??= (await import('p-limit')).default;
-        const limit = pLimit(3);
-        const mockStartEach = jest.fn();
-        const mockEndEach = jest.fn();
-        const mockEndAll = jest.fn();
-        void Promise.allSettled(
-            initializeArray(7, (i) =>
-                limit(
-                    async (id) => {
-                        mockStartEach(
-                            id,
-                            limit.activeCount,
-                            limit.pendingCount,
-                        );
-                        if (timeoutElapse[id] < 0) {
-                            throw new Error();
-                        }
-                        await timeout(timeoutElapse[id]);
-                        mockEndEach(id, limit.activeCount, limit.pendingCount);
-                        return `id: ${id}`;
-                    },
-                    i as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+
+    describe.each([
+        ['original', import('p-limit')],
+        ['this', Promise.resolve({ default: pLimit })],
+    ])('compatibility %s', (_, pLimitPromise) => {
+        let pLimit: (concurrency: number) => LimitFunction;
+        beforeAll(async () => {
+            pLimit = (await pLimitPromise).default;
+        });
+        test('call', async () => {
+            const limit = pLimit(3);
+            const mockStartEach = jest.fn();
+            const mockEndEach = jest.fn();
+            const mockEndAll = jest.fn();
+            void Promise.allSettled(
+                initializeArray(7, (i) =>
+                    limit(
+                        async (id) => {
+                            mockStartEach(
+                                id,
+                                limit.activeCount,
+                                limit.pendingCount,
+                            );
+                            if (timeoutElapse[id] < 0) {
+                                throw new Error();
+                            }
+                            await timeout(timeoutElapse[id]);
+                            mockEndEach(
+                                id,
+                                limit.activeCount,
+                                limit.pendingCount,
+                            );
+                            return `id: ${id}`;
+                        },
+                        i as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+                    ),
                 ),
-            ),
-        ).then(mockEndAll);
+            ).then(mockEndAll);
 
-        await timeout(clearQueueTiming);
-        limit.clearQueue();
-        const settled = await Promise.allSettled(
-            initializeArray(5, (i) =>
-                limit(
-                    async (id) => {
-                        mockStartEach(
-                            id,
-                            limit.activeCount,
-                            limit.pendingCount,
-                        );
-                        await timeout(timeoutElapse[id]);
-                        mockEndEach(id, limit.activeCount, limit.pendingCount);
-                        return `id: ${id}`;
-                    },
-                    (100 + i) as 100 | 101 | 102 | 103 | 104,
+            await timeout(clearQueueTiming);
+            limit.clearQueue();
+            const settled = await Promise.allSettled(
+                initializeArray(5, (i) =>
+                    limit(
+                        async (id) => {
+                            mockStartEach(
+                                id,
+                                limit.activeCount,
+                                limit.pendingCount,
+                            );
+                            await timeout(timeoutElapse[id]);
+                            mockEndEach(
+                                id,
+                                limit.activeCount,
+                                limit.pendingCount,
+                            );
+                            return `id: ${id}`;
+                        },
+                        (100 + i) as 100 | 101 | 102 | 103 | 104,
+                    ),
                 ),
-            ),
-        );
+            );
 
-        expect(mockEndAll).not.toHaveBeenCalled();
-        const status = 'fulfilled';
-        expect(settled).toEqual(
-            initializeArray(5, (id) => ({ status, value: `id: ${id + 100}` })),
-        );
-        expect(mockStartEach.mock.calls).toEqual(startLog);
-        expect(mockEndEach.mock.calls).toEqual(endLog);
-    });
+            expect(mockEndAll).not.toHaveBeenCalled();
+            const status = 'fulfilled';
+            expect(settled).toEqual(
+                initializeArray(5, (id) => ({
+                    status,
+                    value: `id: ${id + 100}`,
+                })),
+            );
+            expect(mockStartEach.mock.calls).toEqual(startLog);
+            expect(mockEndEach.mock.calls).toEqual(endLog);
+        });
 
-    test('no-limit', async () => {
-        const limit = pLimit(Infinity);
-        const promise = Promise.all(
-            initializeArray(10, (i) =>
-                limit(async () => {
-                    await timeout(0);
-                    return i;
-                }),
-            ),
-        );
-        expect(limit.activeCount).toBe(10);
-        expect(limit.pendingCount).toBe(0);
-        expect(() => limit.clearQueue()).not.toThrow();
-        expect(await promise).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        test('no-limit', async () => {
+            const limit = pLimit(Infinity);
+            const promise = Promise.all(
+                initializeArray(10, (i) =>
+                    limit(async () => {
+                        await timeout(0);
+                        return i;
+                    }),
+                ),
+            );
+            expect(limit.activeCount).toBe(0);
+            expect(limit.pendingCount).toBe(10);
+            await timeout(0);
+            expect(limit.activeCount).toBe(10);
+            expect(limit.pendingCount).toBe(0);
+            expect(() => limit.clearQueue()).not.toThrow();
+            expect(await promise).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        });
     });
 
     test('error', () => {
