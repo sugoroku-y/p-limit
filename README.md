@@ -8,9 +8,9 @@ The another [p-limit](https://github.com/sindresorhus/p-limit).
 
 ## Difference
 
-Simplifying the implementation of [p-limit](https://github.com/sindresorhus/p-limit) makes it a bit lighter.
+The implementation of [p-limit](https://github.com/sindresorhus/p-limit) has been simplified to eliminate the asynchronous context switching and the call to `AsyncResource.bind`, making it a bit lighter.
 
-[p-limit](https://github.com/sindresorhus/p-limit)の実装をシンプルにすることでちょっとだけ軽量化を実現しています。
+[p-limit](https://github.com/sindresorhus/p-limit)の実装を単純化して非同期コンテキストの切り替えをなくし`AsyncResource.bind`の呼び出しを不要にしたことでちょっとだけ軽量化を実現しています。
 
 ## Install
 
