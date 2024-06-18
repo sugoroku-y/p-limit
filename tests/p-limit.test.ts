@@ -287,48 +287,242 @@ describe('p-limit', () => {
         ]);
     });
 
-    test('change concurrency to smaller value', async () => {
-        const limit = pLimit(4);
-        expect(limit.concurrency).toBe(4);
-        let running = 0;
-        const log: number[] = [];
-        const promises = Array.from({ length: 10 }).map(() =>
-            limit(async () => {
-                ++running;
-                log.push(running);
-                await timeout(50);
-                --running;
-            }),
-        );
-        await timeout(0);
-        expect(running).toBe(4);
+    describe('original test', () => {
+        test('concurrency: 1', async () => {
+            const input = [
+                [10, 300],
+                [20, 200],
+                [30, 100],
+            ] as const;
 
-        limit.concurrency = 2;
-        expect(limit.concurrency).toBe(2);
-        await Promise.all(promises);
-        expect(log).toEqual([1, 2, 3, 4, 2, 2, 2, 2, 2, 2]);
-    });
+            const start = performance.now();
+            const limit = pLimit(1);
 
-    test('change concurrency to bigger value', async () => {
-        const limit = pLimit(2);
-        expect(limit.concurrency).toBe(2);
-        let running = 0;
-        const log: number[] = [];
-        const promises = Array.from({ length: 10 }).map(() =>
-            limit(async () => {
-                ++running;
-                log.push(running);
-                await timeout(50);
-                --running;
-            }),
-        );
-        await timeout(0);
-        expect(running).toBe(2);
+            const mapper = ([value, ms]: readonly [number, number]) =>
+                limit(async () => {
+                    await timeout(ms);
+                    return value;
+                });
 
-        limit.concurrency = 4;
-        expect(limit.concurrency).toBe(4);
-        await Promise.all(promises);
-        expect(log).toEqual([1, 2, 3, 4, 4, 4, 4, 4, 4, 4]);
+            expect(await Promise.all(input.map((x) => mapper(x)))).toEqual([
+                10, 20, 30,
+            ]);
+            const elapse = performance.now() - start;
+            expect(elapse).toBeGreaterThan(590);
+            expect(elapse).toBeLessThan(650);
+        });
+
+        test('concurrency: 4', async () => {
+            const concurrency = 5;
+            let running = 0;
+
+            const limit = pLimit(concurrency);
+
+            const input = Array.from({ length: 100 }, () =>
+                limit(async () => {
+                    running++;
+                    const current = running;
+                    await timeout(Math.floor(30 + 170 * Math.random()));
+                    running--;
+                    return current;
+                }),
+            );
+            const result = await Promise.all(input);
+            expect(
+                result.every((r) => 1 <= r && r <= concurrency),
+            ).toBeTruthy();
+        });
+
+        test('propagates async execution context properly', async () => {
+            const concurrency = 2;
+            const limit = pLimit(concurrency);
+            const store = new AsyncLocalStorage<number>();
+
+            const checkId = async () => {
+                await Promise.resolve();
+                return store.getStore();
+            };
+
+            const startContext = async (id: number) =>
+                store.run(id, () => limit(checkId));
+
+            const result = await Promise.all(
+                Array.from({ length: 100 }, (_, id) => startContext(id)),
+            );
+            expect(result).toEqual(Array.from({ length: 100 }, (_, id) => id));
+        });
+
+        test('non-promise returning function', async () => {
+            const limit = pLimit(1);
+            // @ts-expect-error -- 型の不一致でも動くことを確認
+            const result = await limit(() => null);
+            expect(result).toBeNull();
+        });
+
+        test('continues after sync throw', async () => {
+            const limit = pLimit(1);
+            let ran = false;
+
+            const promises = [
+                limit(() => {
+                    throw new Error('err');
+                }),
+                // @ts-expect-error 型の不一致でも動くことを確認
+                limit(() => {
+                    ran = true;
+                }),
+            ];
+
+            await Promise.all(promises).catch(() => {});
+
+            expect(ran).toBeTruthy();
+        });
+
+        test('accepts additional arguments', async () => {
+            const limit = pLimit(1);
+            const symbol = Symbol('test');
+
+            const result = await limit(async (a) => Promise.resolve(a), symbol);
+            expect(result).toBe(symbol);
+        });
+
+        test('does not ignore errors', async () => {
+            const limit = pLimit(1);
+            const error = new Error('🦄');
+
+            const promises = [
+                limit(async () => {
+                    await timeout(30);
+                }),
+                limit(async () => {
+                    await timeout(80);
+                    throw error;
+                }),
+                limit(async () => {
+                    await timeout(50);
+                }),
+            ];
+
+            await expect(Promise.all(promises)).rejects.toThrow(error);
+        });
+
+        test('activeCount and pendingCount properties', async () => {
+            const limit = pLimit(5);
+            expect(limit.activeCount).toBe(0);
+            expect(limit.pendingCount).toBe(0);
+
+            const runningPromise1 = limit(() => timeout(1000));
+            expect(limit.activeCount).toBe(0);
+            expect(limit.pendingCount).toBe(1);
+
+            await timeout(0);
+            expect(limit.activeCount).toBe(1);
+            expect(limit.pendingCount).toBe(0);
+
+            await runningPromise1;
+            expect(limit.activeCount).toBe(0);
+            expect(limit.pendingCount).toBe(0);
+
+            const immediatePromises = Array.from({ length: 5 }, () =>
+                limit(() => timeout(1000)),
+            );
+            const delayedPromises = Array.from({ length: 3 }, () =>
+                limit(() => timeout(1000)),
+            );
+
+            await timeout(0);
+            expect(limit.activeCount).toBe(5);
+            expect(limit.pendingCount).toBe(3);
+
+            await Promise.all(immediatePromises);
+            expect(limit.activeCount).toBe(3);
+            expect(limit.pendingCount).toBe(0);
+
+            await Promise.all(delayedPromises);
+
+            expect(limit.activeCount).toBe(0);
+            expect(limit.pendingCount).toBe(0);
+        });
+
+        test('clearQueue', async () => {
+            const limit = pLimit(1);
+
+            void Array.from({ length: 1 }, () => limit(() => timeout(1000)));
+            void Array.from({ length: 3 }, () => limit(() => timeout(1000)));
+
+            await Promise.resolve();
+            expect(limit.pendingCount).toBe(3);
+            limit.clearQueue();
+            expect(limit.pendingCount).toBe(0);
+        });
+
+        test('throws on invalid concurrency argument', () => {
+            expect(() => {
+                pLimit(0);
+            }).toThrow();
+
+            expect(() => {
+                pLimit(-1);
+            }).toThrow();
+
+            expect(() => {
+                pLimit(1.2);
+            }).not.toThrow(); // p-limitとは違い許容する
+
+            expect(() => {
+                // @ts-expect-error 型が不一致でも仕様どおりになることを確認
+                pLimit(undefined);
+            }).toThrow();
+
+            expect(() => {
+                // @ts-expect-error 型が不一致でも仕様どおりになることを確認
+                pLimit(true);
+            }).toThrow();
+        });
+
+        test('change concurrency to smaller value', async () => {
+            const limit = pLimit(4);
+            expect(limit.concurrency).toBe(4);
+            let running = 0;
+            const log: number[] = [];
+            const promises = Array.from({ length: 10 }).map(() =>
+                limit(async () => {
+                    ++running;
+                    log.push(running);
+                    await timeout(50);
+                    --running;
+                }),
+            );
+            await timeout(0);
+            expect(running).toBe(4);
+
+            limit.concurrency = 2;
+            expect(limit.concurrency).toBe(2);
+            await Promise.all(promises);
+            expect(log).toEqual([1, 2, 3, 4, 2, 2, 2, 2, 2, 2]);
+        });
+
+        test('change concurrency to bigger value', async () => {
+            const limit = pLimit(2);
+            expect(limit.concurrency).toBe(2);
+            let running = 0;
+            const log: number[] = [];
+            const promises = Array.from({ length: 10 }).map(() =>
+                limit(async () => {
+                    ++running;
+                    log.push(running);
+                    await timeout(50);
+                    --running;
+                }),
+            );
+            await timeout(0);
+            expect(running).toBe(2);
+
+            limit.concurrency = 4;
+            expect(limit.concurrency).toBe(4);
+            await Promise.all(promises);
+            expect(log).toEqual([1, 2, 3, 4, 4, 4, 4, 4, 4, 4]);
+        });
     });
 });
 
