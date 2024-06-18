@@ -318,7 +318,7 @@ describe('p-limit', () => {
 
             const limit = pLimit(concurrency);
 
-            const input = Array.from({ length: 100 }, () =>
+            const input = initializeArray(100, () =>
                 limit(async () => {
                     running++;
                     const current = running;
@@ -347,9 +347,9 @@ describe('p-limit', () => {
                 store.run(id, () => limit(checkId));
 
             const result = await Promise.all(
-                Array.from({ length: 100 }, (_, id) => startContext(id)),
+                initializeArray(100, (id) => startContext(id)),
             );
-            expect(result).toEqual(Array.from({ length: 100 }, (_, id) => id));
+            expect(result).toEqual(initializeArray(100, (id) => id));
         });
 
         test('non-promise returning function', async () => {
@@ -423,10 +423,10 @@ describe('p-limit', () => {
             expect(limit.activeCount).toBe(0);
             expect(limit.pendingCount).toBe(0);
 
-            const immediatePromises = Array.from({ length: 5 }, () =>
+            const immediatePromises = initializeArray(5, () =>
                 limit(() => timeout(1000)),
             );
-            const delayedPromises = Array.from({ length: 3 }, () =>
+            const delayedPromises = initializeArray(3, () =>
                 limit(() => timeout(1000)),
             );
 
@@ -447,8 +447,8 @@ describe('p-limit', () => {
         test('clearQueue', async () => {
             const limit = pLimit(1);
 
-            void Array.from({ length: 1 }, () => limit(() => timeout(1000)));
-            void Array.from({ length: 3 }, () => limit(() => timeout(1000)));
+            void initializeArray(1, () => limit(() => timeout(1000)));
+            void initializeArray(3, () => limit(() => timeout(1000)));
 
             await Promise.resolve();
             expect(limit.pendingCount).toBe(3);
@@ -485,7 +485,7 @@ describe('p-limit', () => {
             expect(limit.concurrency).toBe(4);
             let running = 0;
             const log: number[] = [];
-            const promises = Array.from({ length: 10 }).map(() =>
+            const promises = initializeArray(10, () =>
                 limit(async () => {
                     ++running;
                     log.push(running);
@@ -507,7 +507,7 @@ describe('p-limit', () => {
             expect(limit.concurrency).toBe(2);
             let running = 0;
             const log: number[] = [];
-            const promises = Array.from({ length: 10 }).map(() =>
+            const promises = initializeArray(10, () =>
                 limit(async () => {
                     ++running;
                     log.push(running);
@@ -540,23 +540,19 @@ function initializeArray<T>(
 async function getPerformance(pLimit: (concurrency: number) => LimitFunction) {
     const limit = pLimit(20);
     const taskCount = 1000;
-    const intervals: number[] = [];
     let last: number | undefined;
     const start = performance.now();
-    const allPromise = Promise.all(
-        initializeArray(taskCount, () =>
-            limit(async () => {
-                if (last !== undefined) {
-                    intervals.push(performance.now() - last);
-                }
-                await timeout(0);
-                last = performance.now();
-            }),
-        ),
+    const promises = initializeArray(taskCount, () =>
+        limit(async () => {
+            const lap = last !== undefined ? performance.now() - last : NaN;
+            await timeout(0);
+            last = performance.now();
+            return lap;
+        }),
     );
     // タスクの登録にかかる時間
     const queuing = (performance.now() - start) / taskCount;
-    await allPromise;
+    const intervals = (await Promise.all(promises)).filter((e) => !isNaN(e));
     // タスクが完了してから次のタスクを開始するまでの時間
     const max = Math.max(...intervals);
     const avg = intervals.reduce((a, b) => a + b) / intervals.length;
