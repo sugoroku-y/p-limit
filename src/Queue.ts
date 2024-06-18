@@ -25,7 +25,14 @@ export function Queue<T>(): Queue<T> {
         },
         dequeue(): T | undefined {
             const head = term.next;
-            return head ? ((term.next = head.next), head.value) : undefined;
+            if (!head) {
+                return undefined;
+            }
+            term.next = head.next;
+            if (!term.next) {
+                tail = undefined;
+            }
+            return head.value;
         },
         enqueue(value: T) {
             tail = (tail ?? term).next = { value };
