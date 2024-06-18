@@ -78,6 +78,7 @@ class LimitExecutor {
      * @memberof LimitExecutor
      */
     private async enqueue(task: () => Promise<unknown>): Promise<unknown> {
+        // 待機状態で開始
         await this.pending();
         ++this.activeCount;
         try {
@@ -95,6 +96,7 @@ class LimitExecutor {
      * @memberof LimitExecutor
      */
     private async reserveStart() {
+        // 前のタスク開始よりあとに行う
         await this.starter;
         if (this.activeCount < this.concurrency) {
             // 余裕があれば開始
