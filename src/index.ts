@@ -1,7 +1,6 @@
 import { Queue } from './Queue';
 
-/** `limit`関数 */
-export interface LimitFunction {
+interface LimitFunctionBase {
     /**
      * タスクをpLimitで指定された並列実行最大数に制限して実行します。
      * @template Parameters タスクに渡される引数の型です。
@@ -14,7 +13,10 @@ export interface LimitFunction {
         task: (...parameters: Parameters) => PromiseLike<ReturnType>,
         ...parameters: Parameters
     ): Promise<ReturnType>;
+}
 
+/** `limit`関数 */
+export type LimitFunction = LimitFunctionBase & {
     /** 現在同時実行中のタスクの数 */
     readonly activeCount: number;
     /** 現在実行待機中のタスクの数 */
@@ -33,13 +35,7 @@ export interface LimitFunction {
      * すでに実行開始済のタスクには何もしません。
      */
     clearQueue(): void;
-}
-
-type FunctionType<T> = T extends (
-    ...parameters: infer Parameters
-) => infer ReturnType
-    ? (...parameters: Parameters) => ReturnType
-    : never;
+};
 
 type TypedPropertyDescriptors<T extends object> = {
     [Key in keyof T]: TypedPropertyDescriptor<T[Key]>;
@@ -67,7 +63,7 @@ class LimitExecutor {
      * @returns タスクの実行結果
      * @memberof LimitExecutor
      */
-    private exec(task: () => Promise<unknown>): Promise<unknown> {
+    private exec<R>(task: () => Promise<R>): Promise<R> {
         try {
             // taskをQueueに積みます。
             return this.enqueue(task);
@@ -85,7 +81,7 @@ class LimitExecutor {
      * @returns タスクの実行結果
      * @memberof LimitExecutor
      */
-    private async enqueue(task: () => Promise<unknown>): Promise<unknown> {
+    private async enqueue<R>(task: () => Promise<R>): Promise<R> {
         // 待機状態で開始
         await this.pending();
         ++this.activeCount;
@@ -195,15 +191,12 @@ class LimitExecutor {
      * @returns 生成した`limit`関数を返します。
      * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
      */
-    static generate(concurrency: number) {
+    static generate(concurrency: number): LimitFunction {
         LimitExecutor.validation(concurrency);
         const executor = new LimitExecutor(concurrency);
-        const limit: FunctionType<LimitFunction> = (task, ...parameters) =>
+        const limit: LimitFunctionBase = (task, ...parameters) =>
             executor.exec(async () => task(...parameters));
-        return Object.defineProperties(
-            limit,
-            executor.descriptors,
-        ) as LimitFunction;
+        return Object.defineProperties(limit, executor.descriptors);
     }
 }
 
@@ -215,6 +208,6 @@ class LimitExecutor {
  * @returns 生成した`limit`関数を返します。
  * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
-export default function pLimit(concurrency: number) {
+export default function pLimit(concurrency: number): LimitFunction {
     return LimitExecutor.generate(concurrency);
 }

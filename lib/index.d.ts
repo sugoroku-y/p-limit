@@ -1,5 +1,4 @@
-/** `limit`関数 */
-export interface LimitFunction {
+interface LimitFunctionBase {
     /**
      * タスクをpLimitで指定された並列実行最大数に制限して実行します。
      * @template Parameters タスクに渡される引数の型です。
@@ -9,6 +8,9 @@ export interface LimitFunction {
      * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
      */
     <Parameters extends unknown[], ReturnType>(task: (...parameters: Parameters) => PromiseLike<ReturnType>, ...parameters: Parameters): Promise<ReturnType>;
+}
+/** `limit`関数 */
+export type LimitFunction = LimitFunctionBase & {
     /** 現在同時実行中のタスクの数 */
     readonly activeCount: number;
     /** 現在実行待機中のタスクの数 */
@@ -27,7 +29,7 @@ export interface LimitFunction {
      * すでに実行開始済のタスクには何もしません。
      */
     clearQueue(): void;
-}
+};
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
  * @param concurrency 並列実行する最大数を指定します。
@@ -37,3 +39,4 @@ export interface LimitFunction {
  * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
 export default function pLimit(concurrency: number): LimitFunction;
+export {};
