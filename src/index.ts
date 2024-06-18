@@ -109,7 +109,7 @@ class LimitExecutor {
      * @memberof LimitExecutor
      */
     private pending() {
-        return new Promise<void>((resolve) => this.queue.enqueue(resolve));
+        return new Promise<void>(this.queue.enqueue);
     }
 
     /**

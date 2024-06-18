@@ -30,4 +30,15 @@ describe('Queue', () => {
         queue.clear();
         expect(queue.size).toBe(0);
     });
+    test('method', () => {
+        const queue = Queue<number>();
+        (0, queue.enqueue)(1);
+        expect(queue.dequeue()).toBe(1);
+    });
+    test('method yocto-queue', async () => {
+        const { default: Queue } = await import('yocto-queue');
+        const queue = new Queue<number>();
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- -
+        expect(() => (0, queue.enqueue)(1)).toThrow();
+    });
 });

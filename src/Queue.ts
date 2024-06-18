@@ -3,10 +3,10 @@ interface Node<T> {
     next?: Node<T>;
 }
 
-interface Queue<T> {
-    clear(): void;
-    dequeue(): T | undefined;
-    enqueue(value: T): void;
+export interface Queue<T> {
+    clear(this: void): void;
+    dequeue(this: void): T | undefined;
+    enqueue(this: void, value: T): void;
     readonly size: number;
 }
 
