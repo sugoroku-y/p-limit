@@ -20,6 +20,14 @@ export interface LimitFunction {
     /** 現在実行待機中のタスクの数 */
     readonly pendingCount: number;
     /**
+     * 同時実行数の最大値。
+     *
+     * より大きい数値に変更すると、待機中のタスクから追加で実行開始します。
+     *
+     * より小さい数値に変更した場合は何もしません。
+     */
+    concurrency: number;
+    /**
      * 現在実行待機中のタスクをクリアして実行開始しないようにします。
      *
      * すでに実行開始済のタスクには何もしません。
@@ -50,7 +58,7 @@ class LimitExecutor {
      * @param concurrency 同時実行数の最大値
      * @memberof LimitExecutor
      */
-    private constructor(private readonly concurrency: number) {}
+    private constructor(private concurrency: number) {}
 
     /**
      * このExecutorで同時に実行できる最大数をconcurrencyに制限してタスクを非同期に実行します。
@@ -85,8 +93,10 @@ class LimitExecutor {
             return await task();
         } finally {
             --this.activeCount;
-            // activeCountが減って余裕ができれば、次のタスクの待機を解除する
-            this.resumeNext();
+            if (this.activeCount < this.concurrency) {
+                // activeCountが減って余裕ができれば、次のタスクの待機を解除する
+                this.resumeNext();
+            }
         }
     }
 
@@ -124,6 +134,22 @@ class LimitExecutor {
     }
 
     /**
+     * 同時実行数の最大値を設定します。
+     *
+     * より大きい数値に変更すると、待機中のタスクから追加で実行開始します。
+     *
+     * より小さい数値に変更した場合は何もしません。
+     * @param newConcurrency 同時実行数の最大値。
+     */
+    private setConcurrency(newConcurrency: number) {
+        LimitExecutor.validation(newConcurrency);
+        this.concurrency = newConcurrency;
+        for (let count = newConcurrency - this.activeCount; count-- > 0; ) {
+            this.starter = this.reserveStart();
+        }
+    }
+
+    /**
      * LimitFunctionのプロパティを定義するPropertyDescriptorを返します。
      * @readonly
      * @private
@@ -135,6 +161,11 @@ class LimitExecutor {
         return {
             activeCount: { get: () => this.activeCount },
             pendingCount: { get: () => this.queue.size },
+            concurrency: {
+                get: () => this.concurrency,
+                set: (newConcurrency: number) =>
+                    this.setConcurrency(newConcurrency),
+            },
             clearQueue: { value: () => this.queue.clear() },
         };
     }

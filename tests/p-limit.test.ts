@@ -67,7 +67,7 @@ describe('p-limit', () => {
     ])('compatibility %s', (_, pLimitPromise) => {
         let pLimit: (concurrency: number) => LimitFunction;
         beforeAll(async () => {
-            pLimit = (await pLimitPromise).default;
+            pLimit = (await pLimitPromise).default as typeof pLimit;
         });
         test('call', async () => {
             const limit = pLimit(3);
@@ -168,7 +168,7 @@ describe('p-limit', () => {
     test('performance', async () => {
         const { default: original } = await import('p-limit');
 
-        const originalResult = await getPerformance(original);
+        const originalResult = await getPerformance(original as typeof pLimit);
         const thisResult = await getPerformance(pLimit);
         console.log('original:', originalResult, 'this package:', thisResult);
 
@@ -285,6 +285,50 @@ describe('p-limit', () => {
             ['foo:0', 'foo:1', 'foo:2', 'foo:3', 'foo:4'],
             ['bar:0', 'bar:1', 'bar:2', 'bar:3', 'bar:4'],
         ]);
+    });
+
+    test('change concurrency to smaller value', async () => {
+        const limit = pLimit(4);
+        expect(limit.concurrency).toBe(4);
+        let running = 0;
+        const log: number[] = [];
+        const promises = Array.from({ length: 10 }).map(() =>
+            limit(async () => {
+                ++running;
+                log.push(running);
+                await timeout(50);
+                --running;
+            }),
+        );
+        await timeout(0);
+        expect(running).toBe(4);
+
+        limit.concurrency = 2;
+        expect(limit.concurrency).toBe(2);
+        await Promise.all(promises);
+        expect(log).toEqual([1, 2, 3, 4, 2, 2, 2, 2, 2, 2]);
+    });
+
+    test('change concurrency to bigger value', async () => {
+        const limit = pLimit(2);
+        expect(limit.concurrency).toBe(2);
+        let running = 0;
+        const log: number[] = [];
+        const promises = Array.from({ length: 10 }).map(() =>
+            limit(async () => {
+                ++running;
+                log.push(running);
+                await timeout(50);
+                --running;
+            }),
+        );
+        await timeout(0);
+        expect(running).toBe(2);
+
+        limit.concurrency = 4;
+        expect(limit.concurrency).toBe(4);
+        await Promise.all(promises);
+        expect(log).toEqual([1, 2, 3, 4, 4, 4, 4, 4, 4, 4]);
     });
 });
 
