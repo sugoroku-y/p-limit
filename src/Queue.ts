@@ -17,11 +17,13 @@ export interface Queue<T> {
 export function Queue<T>(): Queue<T> {
     const term: { next?: Node<T> | undefined } = {};
     let tail: Node<T> | undefined;
+    let size = 0;
 
     return Object.freeze({
         clear() {
             term.next = undefined;
             tail = undefined;
+            size = 0;
         },
         dequeue(): T | undefined {
             const head = term.next;
@@ -32,16 +34,14 @@ export function Queue<T>(): Queue<T> {
             if (!term.next) {
                 tail = undefined;
             }
+            --size;
             return head.value;
         },
         enqueue(value: T) {
             tail = (tail ?? term).next = { value };
+            ++size;
         },
         get size(): number {
-            let size = 0;
-            for (let node = term.next; node; node = node.next) {
-                ++size;
-            }
             return size;
         },
     });
