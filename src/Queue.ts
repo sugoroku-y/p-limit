@@ -1,48 +1,67 @@
-interface Node<T> {
-    value: T;
-    next?: Node<T>;
-}
-
 export interface Queue<T> {
-    clear(this: void): void;
-    dequeue(this: void): T | undefined;
-    enqueue(this: void, value: T): void;
+    /**
+     * The size of the queue.
+     */
     readonly size: number;
+    /**
+     * Add a value to the queue.
+     * @param value The value to be added.
+     */
+    enqueue(this: void, value: T): void;
+    /**
+     * Remove the next value in the queue.
+     * @returns The removed value or `undefined` if the queue is empty.
+     */
+    dequeue(this: void): T | undefined;
+    /**
+     * Clear the queue.
+     */
+    clear(this: void): void;
 }
 
 /**
- * 軽量版Queue
- * @returns 軽量版Queueのインスタンス
+ * The light weight queue.
+ * @returns The instance of the light weight queue.
  */
 export function Queue<T>(): Queue<T> {
-    const term: { next?: Node<T> | undefined } = {};
-    let tail: Node<T> | undefined;
+    interface Node<T> {
+        value: T;
+        next?: Node<T>;
+    }
+
+    const terminal: {
+        next?: Node<T>;
+        tail?: Node<T>;
+    } = {};
     let size = 0;
 
-    return Object.freeze({
-        clear() {
-            term.next = undefined;
-            tail = undefined;
-            size = 0;
-        },
-        dequeue(): T | undefined {
-            const head = term.next;
-            if (!head) {
-                return undefined;
-            }
-            term.next = head.next;
-            if (!term.next) {
-                tail = undefined;
-            }
-            --size;
-            return head.value;
-        },
-        enqueue(value: T) {
-            tail = (tail ?? term).next = { value };
-            ++size;
-        },
+    const clear = () => {
+        delete terminal.next;
+        delete terminal.tail;
+        size = 0;
+    };
+
+    return {
         get size(): number {
             return size;
         },
-    });
+        enqueue(value) {
+            terminal.tail = (terminal.tail ?? terminal).next = { value };
+            ++size;
+        },
+        dequeue() {
+            const head = terminal.next;
+            if (!head) {
+                return undefined;
+            }
+            if (head.next) {
+                terminal.next = head.next;
+                --size;
+            } else {
+                clear();
+            }
+            return head.value;
+        },
+        clear,
+    };
 }
