@@ -10,7 +10,7 @@ interface LimitFunctionBase {
     <Parameters extends unknown[], ReturnType>(task: (...parameters: Parameters) => PromiseLike<ReturnType>, ...parameters: Parameters): Promise<ReturnType>;
 }
 /** `limit`関数 */
-export type LimitFunction = LimitFunctionBase & {
+export interface LimitFunction extends LimitFunctionBase {
     /** 現在同時実行中のタスクの数 */
     readonly activeCount: number;
     /** 現在実行待機中のタスクの数 */
@@ -29,7 +29,7 @@ export type LimitFunction = LimitFunctionBase & {
      * すでに実行開始済のタスクには何もしません。
      */
     clearQueue(): void;
-};
+}
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
  * @param concurrency 並列実行する最大数を指定します。

@@ -16,7 +16,7 @@ interface LimitFunctionBase {
 }
 
 /** `limit`関数 */
-export type LimitFunction = LimitFunctionBase & {
+export interface LimitFunction extends LimitFunctionBase {
     /** 現在同時実行中のタスクの数 */
     readonly activeCount: number;
     /** 現在実行待機中のタスクの数 */
@@ -35,7 +35,7 @@ export type LimitFunction = LimitFunctionBase & {
      * すでに実行開始済のタスクには何もしません。
      */
     clearQueue(): void;
-};
+}
 
 type TypedPropertyDescriptors<T extends object> = {
     [Key in keyof T]: TypedPropertyDescriptor<T[Key]>;
@@ -63,25 +63,7 @@ class LimitExecutor {
      * @returns タスクの実行結果
      * @memberof LimitExecutor
      */
-    private exec<R>(task: () => Promise<R>): Promise<R> {
-        try {
-            // taskをQueueに積みます。
-            return this.enqueue(task);
-        } finally {
-            // 同時にtaskの実行開始を予約します。
-            this.starter = this.reserveStart();
-            // execはasync関数ではなくenqueueにもawaitが付いていないのでreserveStartは並列に実行されます。
-        }
-    }
-
-    /**
-     * タスクをキューに積み、実行可能になったら実行して、結果を返します。
-     * @private
-     * @param task 実行するタスク
-     * @returns タスクの実行結果
-     * @memberof LimitExecutor
-     */
-    private async enqueue<R>(task: () => Promise<R>): Promise<R> {
+    private async exec<R>(task: () => Promise<R>): Promise<R> {
         // 待機状態で開始
         await this.pending();
         ++this.activeCount;
@@ -99,14 +81,18 @@ class LimitExecutor {
     /**
      * 次のタスクを実行可能な状態であれば待機を解除します。
      * @private
+     * @param count 待機解除するタスクの数を指定します。省略したときは1を指定したものと見なします。
      * @memberof LimitExecutor
      */
-    private async reserveStart() {
-        // 前のタスク開始よりあとに行う
-        await this.starter;
-        if (this.activeCount < this.concurrency) {
-            // 余裕があれば開始
-            this.resumeNext();
+    private reserveStart(count = 1) {
+        for (let rest = count; rest-- > 0; ) {
+            // 前のタスク開始よりあとに行う
+            this.starter = this.starter.then(() => {
+                if (this.activeCount < this.concurrency) {
+                    // 余裕があれば開始
+                    this.resumeNext();
+                }
+            });
         }
     }
 
@@ -117,7 +103,13 @@ class LimitExecutor {
      * @memberof LimitExecutor
      */
     private pending() {
-        return new Promise<void>(this.queue.enqueue);
+        try {
+            // 待機状態にします
+            return new Promise<void>(this.queue.enqueue);
+        } finally {
+            // と同時に待機解除を予約します。
+            this.reserveStart();
+        }
     }
 
     /**
@@ -140,9 +132,7 @@ class LimitExecutor {
     private setConcurrency(newConcurrency: number) {
         LimitExecutor.validation(newConcurrency);
         this.concurrency = newConcurrency;
-        for (let count = newConcurrency - this.activeCount; count-- > 0; ) {
-            this.starter = this.reserveStart();
-        }
+        this.reserveStart(this.concurrency - this.activeCount);
     }
 
     /**
@@ -159,10 +149,9 @@ class LimitExecutor {
             pendingCount: { get: () => this.queue.size },
             concurrency: {
                 get: () => this.concurrency,
-                set: (newConcurrency: number) =>
-                    this.setConcurrency(newConcurrency),
+                set: this.setConcurrency.bind(this),
             },
-            clearQueue: { value: () => this.queue.clear() },
+            clearQueue: { value: this.queue.clear },
         };
     }
 
