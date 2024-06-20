@@ -7,7 +7,7 @@ interface LimitFunctionBase {
      * @param parameters タスクに渡される引数を指定します。
      * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
      */
-    <Parameters extends unknown[], ReturnType>(task: (...parameters: Parameters) => PromiseLike<ReturnType>, ...parameters: Parameters): Promise<ReturnType>;
+    <Parameters extends unknown[], ReturnType>(task: (...parameters: Parameters) => ReturnType, ...parameters: Parameters): Promise<Awaited<ReturnType>>;
 }
 /** `limit`関数 */
 export interface LimitFunction extends LimitFunctionBase {

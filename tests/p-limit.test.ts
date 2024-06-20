@@ -354,7 +354,6 @@ describe('p-limit', () => {
 
         test('non-promise returning function', async () => {
             const limit = pLimit(1);
-            // @ts-expect-error -- 型の不一致でも動くことを確認
             const result = await limit(() => null);
             expect(result).toBeNull();
         });
@@ -367,7 +366,6 @@ describe('p-limit', () => {
                 limit(() => {
                     throw new Error('err');
                 }),
-                // @ts-expect-error 型の不一致でも動くことを確認
                 limit(() => {
                     ran = true;
                 }),

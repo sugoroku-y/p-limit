@@ -10,9 +10,9 @@ interface LimitFunctionBase {
      * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
      */
     <Parameters extends unknown[], ReturnType>(
-        task: (...parameters: Parameters) => PromiseLike<ReturnType>,
+        task: (...parameters: Parameters) => ReturnType,
         ...parameters: Parameters
-    ): Promise<ReturnType>;
+    ): Promise<Awaited<ReturnType>>;
 }
 
 /** `limit`関数 */
@@ -63,11 +63,12 @@ class LimitExecutor {
      * @returns タスクの実行結果
      * @memberof LimitExecutor
      */
-    private async exec<R>(task: () => Promise<R>): Promise<R> {
+    private async exec<R>(task: () => R): Promise<Awaited<R>> {
         // 待機状態で開始
         await this.pending();
         ++this.activeCount;
         try {
+            // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは基本的にPromiseを返す
             return await task();
         } finally {
             --this.activeCount;
@@ -184,7 +185,7 @@ class LimitExecutor {
         LimitExecutor.validation(concurrency);
         const executor = new LimitExecutor(concurrency);
         const limit: LimitFunctionBase = (task, ...parameters) =>
-            executor.exec(async () => task(...parameters));
+            executor.exec(() => task(...parameters));
         return Object.defineProperties(limit, executor.descriptors);
     }
 }
