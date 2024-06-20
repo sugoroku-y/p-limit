@@ -80,24 +80,6 @@ class LimitExecutor {
     }
 
     /**
-     * 次のタスクを実行可能な状態であれば待機を解除します。
-     * @private
-     * @param count 待機解除するタスクの数を指定します。省略したときは1を指定したものと見なします。
-     * @memberof LimitExecutor
-     */
-    private reserveStart(count = 1) {
-        for (let rest = count; rest-- > 0; ) {
-            // 前のタスク開始よりあとに行う
-            this.starter = this.starter.then(() => {
-                if (this.activeCount < this.concurrency) {
-                    // 余裕があれば開始
-                    this.resumeNext();
-                }
-            });
-        }
-    }
-
-    /**
      * 待機状態のPromiseを返します。
      * @private
      * @returns 待機状態のPromise
@@ -109,7 +91,12 @@ class LimitExecutor {
             return new Promise<void>(this.queue.enqueue);
         } finally {
             // と同時に待機解除を予約します。
-            this.reserveStart();
+            this.starter = this.starter.then(() => {
+                if (this.activeCount < this.concurrency) {
+                    // 余裕があれば開始
+                    this.resumeNext();
+                }
+            });
         }
     }
 
@@ -133,7 +120,10 @@ class LimitExecutor {
     private setConcurrency(newConcurrency: number) {
         LimitExecutor.validation(newConcurrency);
         this.concurrency = newConcurrency;
-        this.reserveStart(this.concurrency - this.activeCount);
+        let count = this.concurrency - this.activeCount;
+        while (count-- > 0) {
+            this.resumeNext();
+        }
     }
 
     /**
