@@ -82,7 +82,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
                 set: setConcurrency,
             },
         } satisfies TypedPropertyDescriptors<LimitFunction>,
-    );
+    ) as LimitFunction;
 
     /**
      * 外部に公開するAPIの引数が適切なものかチェックして、不適切であれば例外を投げます。
@@ -142,3 +142,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
         }
     }
 }
+
+type TypedPropertyDescriptors<T extends object> = {
+    readonly [K in keyof T]: TypedPropertyDescriptor<T[K]>;
+};
