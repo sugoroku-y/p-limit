@@ -1,5 +1,12 @@
 import { Queue } from './Queue';
 
+/**
+ * LimitFunctionの関数部分の定義です。
+ *
+ * 型関数を使って関数部分を抽出するとGenericsが消えてしまうので分割します。
+ *
+ * 引数などのJsDocが有効になるようにinterfaceで定義しています。
+ */
 interface LimitFunctionBase {
     /**
      * タスクをpLimitで指定された並列実行最大数に制限して実行します。
@@ -43,7 +50,7 @@ export interface LimitFunction extends LimitFunctionBase {
  *
  * 1以上の数値を指定できます。
  * @returns 生成した`limit`関数を返します。
- * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
+ * @throws `concurrency`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
 export default function pLimit(concurrencySpec: number): LimitFunction {
     validation(concurrencySpec);
@@ -57,39 +64,12 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     /** 即時実行するためのPromiseチェーン */
     let starter = Promise.resolve();
 
-    return Object.defineProperties(
-        (async (task, ...parameters) => {
-            // 待機状態で開始
-            await pending();
-            ++activeCount;
-            try {
-                // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは通常Promiseを返すので問題ない
-                return await task(...parameters);
-            } finally {
-                --activeCount;
-                if (activeCount < concurrency) {
-                    // activeCountが減って余裕ができれば、次のタスクの待機を解除する
-                    resumeNext();
-                }
-            }
-        }) as LimitFunctionBase,
-        {
-            activeCount: { get: () => activeCount },
-            pendingCount: { get: () => queue.size },
-            clearQueue: { value: queue.clear },
-            concurrency: {
-                get: () => concurrency,
-                set: setConcurrency,
-            },
-        } satisfies TypedPropertyDescriptors<LimitFunction>,
-    ) as LimitFunction;
+    return generate();
 
     /**
-     * 外部に公開するAPIの引数が適切なものかチェックして、不適切であれば例外を投げます。
-     * @static
+     * `concurrency`が適切なものかチェックして、不適切であれば例外を投げます。
      * @param concurrency 並列実行する最大数を指定します。
-     * @memberof LimitExecutor
-     * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
+     * @throws `concurrency`が不正な値(数値以外や1未満の数値)だったときに例外を投げます。
      */
     function validation(concurrency: number) {
         // 引数のチェック
@@ -100,19 +80,17 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
             'Expected `concurrency` to be a number from 1 and up',
         );
     }
+
     /**
      * pendingで生成されたPromiseの待機状態を解除します。
-     * @private
-     * @memberof LimitExecutor
      */
     function resumeNext() {
         queue.dequeue()?.();
     }
+
     /**
      * 待機状態のPromiseを返します。
-     * @private
      * @returns 待機状態のPromise
-     * @memberof LimitExecutor
      */
     function pending() {
         // 余裕があれば待機を解除する処理を予約しておきます。
@@ -124,6 +102,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
         // 待機状態にします
         return new Promise<void>(queue.enqueue);
     }
+
     /**
      * 同時実行数の最大値を設定します。
      *
@@ -141,8 +120,50 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
             resumeNext();
         }
     }
-}
 
-type TypedPropertyDescriptors<T extends object> = {
-    readonly [K in keyof T]: TypedPropertyDescriptor<T[K]>;
-};
+    /**
+     * タスクをconcurrencyで指定された並列実行最大数に制限して実行します。
+     * @template Parameters タスクに渡される引数の型です。
+     * @template ReturnType タスクが返す返値の型です。
+     * @param task 実行するタスクを指定します。
+     * @param parameters タスクに渡される引数を指定します。
+     * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
+     */
+    async function limit<Parameters extends unknown[], ReturnType>(
+        task: (...p: Parameters) => ReturnType,
+        ...parameters: Parameters
+    ): Promise<Awaited<ReturnType>> {
+        // 待機状態で開始
+        await pending();
+        ++activeCount;
+        try {
+            // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは通常Promiseを返すので問題ない
+            return await task(...parameters);
+        } finally {
+            --activeCount;
+            if (activeCount < concurrency) {
+                // activeCountが減って余裕ができれば、次のタスクの待機を解除する
+                resumeNext();
+            }
+        }
+    }
+
+    /**
+     * limit関数にLimitFunctionのプロパティを付加して返します。
+     * @returns LimitFunctionのプロパティ付きlimit関数
+     */
+    function generate(): LimitFunction {
+        return Object.defineProperties(
+            limit satisfies LimitFunctionBase,
+            {
+                activeCount: { get: () => activeCount },
+                pendingCount: { get: () => queue.size },
+                clearQueue: { value: queue.clear },
+                concurrency: {
+                    get: () => concurrency,
+                    set: setConcurrency,
+                },
+            } satisfies TypedPropertyDescriptorMap<LimitFunction>,
+        );
+    }
+}

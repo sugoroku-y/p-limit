@@ -1,3 +1,10 @@
+/**
+ * LimitFunctionの関数部分の定義です。
+ *
+ * 型関数を使って関数部分を抽出するとGenericsが消えてしまうので分割します。
+ *
+ * 引数などのJsDocが有効になるようにinterfaceで定義しています。
+ */
 interface LimitFunctionBase {
     /**
      * タスクをpLimitで指定された並列実行最大数に制限して実行します。
@@ -36,7 +43,7 @@ export interface LimitFunction extends LimitFunctionBase {
  *
  * 1以上の数値を指定できます。
  * @returns 生成した`limit`関数を返します。
- * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
+ * @throws `concurrency`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
 export default function pLimit(concurrencySpec: number): LimitFunction;
 export {};
