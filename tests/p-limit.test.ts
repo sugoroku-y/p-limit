@@ -445,13 +445,16 @@ describe('p-limit', () => {
         test('clearQueue', async () => {
             const limit = pLimit(1);
 
-            void initializeArray(1, () => limit(() => timeout(1000)));
+            const promise = limit(() => timeout(1000));
             void initializeArray(3, () => limit(() => timeout(1000)));
 
-            await Promise.resolve();
+            await timeout(0);
             expect(limit.pendingCount).toBe(3);
             limit.clearQueue();
             expect(limit.pendingCount).toBe(0);
+            expect(limit.activeCount).toBe(1);
+            await promise;
+            expect(limit.activeCount).toBe(0);
         });
 
         test('throws on invalid concurrency argument', () => {
