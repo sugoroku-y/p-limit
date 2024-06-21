@@ -29,17 +29,43 @@ describe('sample', () => {
             /* ts */ `
                 import pLimit from '@sugoroku-y/p-limit';
 
-                const limit = pLimit(3);
+                const concurrency = 30;
+                const count = 1000;
+                const limit = pLimit(concurrency);
+                let received = '';
 
                 void Promise.all(
-                    Array.from({ length: 10 }, (_, i) =>
+                    Array.from({ length: count }, (_, i) =>
                         limit(async (id: number) => {
-                            console.log(id, 'start');
-                            await new Promise((r) => setTimeout(r, 100 + 900 * Math.random()));
-                            console.log(id, 'end');
+                            received += id + 's';
+                            await new Promise((r) => setTimeout(r, 0));
+                            received += id + 'e';
                         }, i),
                     ),
-                ).then(console.log);
+                ).then(() => {
+                    function* makeExpected(concurrency: number, count: number) {
+                        const numbers = Array.from({length:count}, (_,i) => i);
+                        const start = numbers[Symbol.iterator]();
+                        const end = numbers[Symbol.iterator]();
+                        for (let r = concurrency; r-- >0;) {
+                            const {value:s} =  start.next();
+                            yield s + 's';
+                        }
+                        for (const e of end) {
+                            yield e + 'e';
+                            const {value: s} =  start.next();
+                            if (s !== undefined) yield s + 's';
+                        }
+                    }
+
+                    const expected = ''.concat(...makeExpected(concurrency, count));
+                    if (received === expected) {
+                        process.exit(0);
+                    }
+                    console.log('received:', received);
+                    console.log('expected:', expected);
+                    process.exit(1);
+                });
                 `,
             'utf8',
         );
