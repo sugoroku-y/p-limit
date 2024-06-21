@@ -1,4 +1,4 @@
-export interface Queue<T> {
+export interface Queue<T> extends Iterable<T> {
     /**
      * The size of the queue.
      */

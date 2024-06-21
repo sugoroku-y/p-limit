@@ -11,13 +11,16 @@ describe('Queue', () => {
         queue.enqueue(1);
         queue.enqueue(2);
         queue.enqueue(3);
+        expect([...queue]).toEqual([1, 2, 3]);
         log.push(queue.dequeue());
         log.push(queue.dequeue());
         log.push(queue.dequeue());
         log.push(queue.dequeue());
+        expect([...queue]).toEqual([]);
         queue.enqueue(11);
         queue.enqueue(12);
         queue.enqueue(13);
+        expect([...queue]).toEqual([11, 12, 13]);
         log.push(queue.dequeue());
         log.push(queue.dequeue());
         log.push(queue.dequeue());

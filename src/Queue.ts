@@ -1,4 +1,4 @@
-export interface Queue<T> {
+export interface Queue<T> extends Iterable<T> {
     /**
      * The size of the queue.
      */
@@ -63,5 +63,10 @@ export function Queue<T>(): Queue<T> {
             return head.value;
         },
         clear,
+        *[Symbol.iterator]() {
+            for (let node = terminal.next; node; node = node.next) {
+                yield node.value;
+            }
+        },
     };
 }
