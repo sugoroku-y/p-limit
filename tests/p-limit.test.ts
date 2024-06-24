@@ -64,7 +64,7 @@ describe('p-limit', () => {
     describe.each([
         ['original', import('p-limit')],
         ['this', Promise.resolve({ default: pLimit })],
-    ])('compatibility %s', (_, pLimitPromise) => {
+    ])('compatibility %s', (pkg, pLimitPromise) => {
         let pLimit: (concurrency: number) => LimitFunction;
         beforeAll(async () => {
             pLimit = (await pLimitPromise).default as typeof pLimit;
@@ -131,7 +131,20 @@ describe('p-limit', () => {
                     value: `id: ${id + 100}`,
                 })),
             );
-            expect(mockStartEach.mock.calls).toEqual(startLog);
+            expect(mockStartEach.mock.calls).toEqual(
+                pkg === 'original'
+                    ? startLog
+                    : [
+                          ...Array.from(
+                              { length: limit.concurrency - 1 },
+                              (_, i) => [
+                                  i,
+                                  ...startLog[limit.concurrency - 1].slice(1),
+                              ],
+                          ),
+                          ...startLog.slice(limit.concurrency - 1),
+                      ],
+            );
             expect(mockEndEach.mock.calls).toEqual(endLog);
         });
 

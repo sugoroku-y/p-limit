@@ -61,8 +61,6 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     let activeCount = 0;
     /** 待機中のタスク */
     const queue = Queue<() => void>();
-    /** 即時実行するためのPromiseチェーン */
-    let starter = Promise.resolve();
 
     return generate();
 
@@ -85,7 +83,14 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
      * pendingで生成されたPromiseの待機状態を解除します。
      */
     function resumeNext() {
-        queue.dequeue()?.();
+        const resolve = queue.dequeue();
+        if (!resolve) {
+            return;
+        }
+
+        resolve();
+        // pendingCountを1つ減らしたので、activeCountを1つ増やす
+        ++activeCount;
     }
 
     /**
@@ -94,11 +99,13 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
      */
     function pending() {
         // 余裕があれば待機を解除する処理を予約しておきます。
-        starter = starter.then(() => {
+        (async () => {
+            await Promise.resolve();
+
             if (activeCount < concurrency) {
                 resumeNext();
             }
-        });
+        })();
         // 待機状態にします
         return new Promise<void>(queue.enqueue);
     }
@@ -115,8 +122,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
         validation(newConcurrency);
         concurrency = newConcurrency;
         // 増えた分だけ待機解除
-        let count = concurrency - activeCount;
-        while (count-- > 0) {
+        while (activeCount < concurrency) {
             resumeNext();
         }
     }
@@ -135,7 +141,6 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     ): Promise<Awaited<ReturnType>> {
         // 待機状態で開始
         await pending();
-        ++activeCount;
         try {
             // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは通常Promiseを返すので問題ない
             return await task(...parameters);
