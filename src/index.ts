@@ -44,6 +44,12 @@ export interface LimitFunction extends LimitFunctionBase {
     clearQueue(): void;
 }
 
+type PromiseR<F extends (...p: never) => unknown> = F extends (
+    ...p: never
+) => infer R
+    ? Promise<Awaited<R>>
+    : never;
+
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
  * @param concurrencySpec 並列実行する最大数を指定します。
@@ -62,7 +68,18 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     /** 待機中のタスク */
     const queue = Queue<() => void>();
 
-    return generate();
+    return generate(async (task, ...parameters): PromiseR<typeof task> => {
+        // 余裕があれば開始する処理を予約
+        void reserveStaring();
+        // 待機状態で開始
+        await pending();
+        try {
+            // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは通常Promiseを返すので問題ない
+            return await task(...parameters);
+        } finally {
+            onFinally();
+        }
+    });
 
     /**
      * `concurrency`が適切なものかチェックして、不適切であれば例外を投げます。
@@ -94,19 +111,31 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     }
 
     /**
+     * タスク完了後の処理を実行します。
+     * - activeCountを1つ減らします。
+     * - activeCountがconcurrencyを下回ったら、次のタスクの待機を解除する
+     */
+    function onFinally() {
+        --activeCount;
+        if (activeCount < concurrency) {
+            resumeNext();
+        }
+    }
+
+    /**
+     * 余裕があれば待機を解除する処理を予約します。
+     */
+    async function reserveStaring() {
+        await Promise.resolve();
+        if (activeCount < concurrency) {
+            resumeNext();
+        }
+    }
+    /**
      * 待機状態のPromiseを返します。
      * @returns 待機状態のPromise
      */
     function pending() {
-        // 余裕があれば待機を解除する処理を予約しておきます。
-        (async () => {
-            await Promise.resolve();
-
-            if (activeCount < concurrency) {
-                resumeNext();
-            }
-        })();
-        // 待機状態にします
         return new Promise<void>(queue.enqueue);
     }
 
@@ -128,47 +157,19 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     }
 
     /**
-     * タスクをconcurrencyで指定された並列実行最大数に制限して実行します。
-     * @template Parameters タスクに渡される引数の型です。
-     * @template ReturnType タスクが返す返値の型です。
-     * @param task 実行するタスクを指定します。
-     * @param parameters タスクに渡される引数を指定します。
-     * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
-     */
-    async function limit<Parameters extends unknown[], ReturnType>(
-        task: (...p: Parameters) => ReturnType,
-        ...parameters: Parameters
-    ): Promise<Awaited<ReturnType>> {
-        // 待機状態で開始
-        await pending();
-        try {
-            // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは通常Promiseを返すので問題ない
-            return await task(...parameters);
-        } finally {
-            --activeCount;
-            if (activeCount < concurrency) {
-                // activeCountが減って余裕ができれば、次のタスクの待機を解除する
-                resumeNext();
-            }
-        }
-    }
-
-    /**
      * limit関数にLimitFunctionのプロパティを付加して返します。
+     * @param limit プロパティを付加するlimit関数
      * @returns LimitFunctionのプロパティ付きlimit関数
      */
-    function generate(): LimitFunction {
-        return Object.defineProperties(
-            limit satisfies LimitFunctionBase,
-            {
-                activeCount: { get: () => activeCount },
-                pendingCount: { get: () => queue.size },
-                clearQueue: { value: queue.clear },
-                concurrency: {
-                    get: () => concurrency,
-                    set: setConcurrency,
-                },
-            } satisfies TypedPropertyDescriptorMap<LimitFunction>,
-        );
+    function generate(limit: LimitFunctionBase): LimitFunction {
+        return Object.defineProperties(limit, {
+            activeCount: { get: () => activeCount },
+            pendingCount: { get: () => queue.size },
+            clearQueue: { value: queue.clear },
+            concurrency: {
+                get: () => concurrency,
+                set: setConcurrency,
+            },
+        });
     }
 }
