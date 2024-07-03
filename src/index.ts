@@ -98,16 +98,19 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
 
     /**
      * pendingで生成されたPromiseの待機状態を解除します。
+     * @returns 実際に待機状態を解除したときはtrueを返します。
      */
-    function resumeNext() {
-        const resolve = queue.dequeue();
-        if (!resolve) {
-            return;
+    function resumeNext(): boolean {
+        if (activeCount < concurrency) {
+            const resolve = queue.dequeue();
+            if (resolve) {
+                resolve();
+                // pendingCountを1つ減らしたので、activeCountを1つ増やす
+                ++activeCount;
+                return true;
+            }
         }
-
-        resolve();
-        // pendingCountを1つ減らしたので、activeCountを1つ増やす
-        ++activeCount;
+        return false;
     }
 
     /**
@@ -117,9 +120,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
      */
     function onFinally() {
         --activeCount;
-        if (activeCount < concurrency) {
-            resumeNext();
-        }
+        resumeNext();
     }
 
     /**
@@ -127,9 +128,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
      */
     async function reserveStaring() {
         await Promise.resolve();
-        if (activeCount < concurrency) {
-            resumeNext();
-        }
+        resumeNext();
     }
     /**
      * 待機状態のPromiseを返します。
@@ -151,9 +150,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
         validation(newConcurrency);
         concurrency = newConcurrency;
         // 増えた分だけ待機解除
-        while (activeCount < concurrency) {
-            resumeNext();
-        }
+        while (resumeNext());
     }
 
     /**
@@ -165,11 +162,11 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
         return Object.defineProperties(limit, {
             activeCount: { get: () => activeCount },
             pendingCount: { get: () => queue.size },
-            clearQueue: { value: queue.clear },
+            clearQueue: { value: queue.clear, writable: true },
             concurrency: {
                 get: () => concurrency,
                 set: setConcurrency,
             },
-        });
+        } satisfies TypedStrictPropertyDescriptorMap<LimitFunction>);
     }
 }

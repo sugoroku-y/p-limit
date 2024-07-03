@@ -538,6 +538,30 @@ describe('p-limit', () => {
             expect(log).toEqual([1, 2, 3, 4, 4, 4, 4, 4, 4, 4]);
         });
     });
+    describe('writable & readonly', () => {
+        const limit: Writable<LimitFunction> = pLimit(3);
+        test('activeCount', () => {
+            expect(() => {
+                limit.activeCount = 1;
+            }).toThrow();
+            expect(limit.activeCount).toBe(0);
+        });
+        test('pendingCount', () => {
+            expect(() => {
+                limit.pendingCount = 1;
+            }).toThrow();
+            expect(limit.pendingCount).toBe(0);
+        });
+        test('clearQueue', () => {
+            const dummy = () => {};
+            limit.clearQueue = dummy;
+            expect(limit.clearQueue).toBe(dummy);
+        });
+        test('concurrency', () => {
+            limit.concurrency = 5;
+            expect(limit.concurrency).toBe(5);
+        });
+    });
 });
 
 function timeout(elapse: number): Promise<void> {
@@ -573,3 +597,5 @@ async function getPerformance(pLimit: (concurrency: number) => LimitFunction) {
     // queuing + avgをパフォーマンス計測の対象とする
     return { max, avg, queuing, score: queuing + avg };
 }
+
+type Writable<T> = { -readonly [K in keyof T]: T[K] };
