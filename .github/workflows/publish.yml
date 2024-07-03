@@ -20,6 +20,9 @@ jobs:
                   registry-url: 'https://npm.pkg.github.com'
                   # Defaults to the user or organization that owns the workflow file
                   scope: '@sugoroku-y'
+            - run: npm ci
+            - run: npm run build
+            - run: npm test --lint --coverage
             - run: npm publish
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.PUBLISH_PACKAGE_TOKEN }}
