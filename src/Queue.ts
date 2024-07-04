@@ -24,14 +24,14 @@ export interface Queue<T> extends Iterable<T> {
  * @returns The instance of the light weight queue.
  */
 export function Queue<T>(): Queue<T> {
-    interface Node<T> {
+    interface Node {
         value: T;
-        next?: Node<T>;
+        next?: Node;
     }
 
     const terminal: {
-        next?: Node<T>;
-        tail?: Node<T>;
+        next?: Node;
+        tail?: Node;
     } = {};
     let size = 0;
 
