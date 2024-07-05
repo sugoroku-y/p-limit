@@ -50,6 +50,8 @@ type PromiseR<F extends (...p: never) => unknown> = F extends (
     ? Promise<Awaited<R>>
     : never;
 
+const nextMicroTask = Promise.resolve();
+
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
  * @param concurrencySpec 並列実行する最大数を指定します。
@@ -69,15 +71,18 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     const queue = Queue<() => void>();
 
     return generate(async (task, ...parameters): PromiseR<typeof task> => {
-        // 余裕があれば開始する処理を予約
-        void reserveStaring();
-        // 待機状態で開始
-        await pending();
+        // 先に余裕があれば開始する処理を予約しておきます
+        void nextMicroTask.then(resumeNext);
+        // 待機状態で開始します
+        await new Promise<void>(queue.enqueue);
         try {
             // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは通常Promiseを返すので問題ない
             return await task(...parameters);
         } finally {
-            onFinally();
+            // taskが完了したら1つ減らします
+            --activeCount;
+            // 次のタスクを開始します。
+            resumeNext();
         }
     });
 
@@ -105,37 +110,12 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
             const resolve = queue.dequeue();
             if (resolve) {
                 resolve();
-                // pendingCountを1つ減らしたので、activeCountを1つ増やす
+                // pendingCountを1つ減らしたので、activeCountを1つ増やします
                 ++activeCount;
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * タスク完了後の処理を実行します。
-     * - activeCountを1つ減らします。
-     * - activeCountがconcurrencyを下回ったら、次のタスクの待機を解除する
-     */
-    function onFinally() {
-        --activeCount;
-        resumeNext();
-    }
-
-    /**
-     * 余裕があれば待機を解除する処理を予約します。
-     */
-    async function reserveStaring() {
-        await Promise.resolve();
-        resumeNext();
-    }
-    /**
-     * 待機状態のPromiseを返します。
-     * @returns 待機状態のPromise
-     */
-    function pending() {
-        return new Promise<void>(queue.enqueue);
     }
 
     /**
@@ -149,7 +129,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     function setConcurrency(newConcurrency: number) {
         validation(newConcurrency);
         concurrency = newConcurrency;
-        // 増えた分だけ待機解除
+        // 増えた分だけ待機解除します
         while (resumeNext());
     }
 
