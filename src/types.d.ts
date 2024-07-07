@@ -2,7 +2,7 @@ declare global {
     /**
      * TのinterfaceをdefinePropertiesで定義するために必要なPropertyDescriptorMapを返します。
      */
-    type TypedStrictPropertyDescriptorMap<T extends object> = {
+    type StrictPropertyDescriptorMapOf<T extends object> = {
         readonly [K in keyof T]: IsReadonlyProperty<T, K> extends true
             ?
                   | ValuePropertyDescriptor<T[K], false>
@@ -23,7 +23,7 @@ declare global {
         defineProperty<
             Target extends object,
             Key extends PropertyKey,
-            Descriptor extends StrictPropertyDescriptor,
+            Descriptor extends PropertyDescriptor,
         >(
             target: Target,
             propertyKey: Key,
@@ -37,7 +37,7 @@ declare global {
          */
         defineProperties<
             Target extends object,
-            PropertyMap extends StrictPropertyDescriptorMap,
+            PropertyMap extends PropertyDescriptorMap,
         >(
             target: Target,
             properties: PropertyMap,
@@ -45,20 +45,22 @@ declare global {
     }
 }
 
-type TypeOfStrictPropertyDescriptorMap<D extends StrictPropertyDescriptorMap> =
-    {
-        -readonly [K in keyof D as IsReadonlyPropertyDescriptor<
-            D[K]
-        > extends false
-            ? K
-            : never]: TypeOfPropertyDescriptor<D[K]>;
-    } & {
-        readonly [K in keyof D as IsReadonlyPropertyDescriptor<
-            D[K]
-        > extends true
-            ? K
-            : never]: TypeOfPropertyDescriptor<D[K]>;
-    };
+type TypeOfStrictPropertyDescriptorMap<D extends PropertyDescriptorMap> =
+    IsValidPropertyDescriptorMap<D> extends true
+        ? {
+              -readonly [K in keyof D as IsReadonlyPropertyDescriptor<
+                  D[K]
+              > extends false
+                  ? K
+                  : never]: TypeOfPropertyDescriptor<D[K]>;
+          } & {
+              readonly [K in keyof D as IsReadonlyPropertyDescriptor<
+                  D[K]
+              > extends true
+                  ? K
+                  : never]: TypeOfPropertyDescriptor<D[K]>;
+          }
+        : never;
 
 type GetterOnlyPropertyDescriptor<T = never> = Omit<
     Omit<PropertyDescriptor, 'get' | 'set' | 'value' | 'writable'> & {
@@ -98,10 +100,18 @@ type StrictPropertyDescriptor =
     | AccessorPropertyDescriptor
     | GetterOnlyPropertyDescriptor
     | ValuePropertyDescriptor;
-type StrictPropertyDescriptorMap = Record<
-    PropertyKey,
-    StrictPropertyDescriptor
->;
+type IsValidPropertyDescriptor<D extends PropertyDescriptor> =
+    D extends StrictPropertyDescriptor ? true : false;
+type IsValidPropertyDescriptorMap<Map extends PropertyDescriptorMap> = [
+    {
+        [K in keyof Map]: IsValidPropertyDescriptor<Map[K]> extends true
+            ? never
+            : 1;
+    }[keyof Map],
+] extends [never]
+    ? true
+    : false;
+
 type IsReadonlyPropertyDescriptor<D extends PropertyDescriptor> = D extends {
     get: () => unknown;
 }
