@@ -147,6 +147,6 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
                 get: () => concurrency,
                 set: setConcurrency,
             },
-        } satisfies StrictPropertyDescriptorMapOf<LimitFunction>);
+        } satisfies PropertyDescriptorMapOf<LimitFunction>);
     }
 }
