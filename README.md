@@ -15,9 +15,17 @@ The another [p-limit](https://github.com/sindresorhus/p-limit).
 
 ## Difference
 
-The implementation of [p-limit](https://github.com/sindresorhus/p-limit) has been simplified to eliminate the asynchronous context switching and the call to `AsyncResource.bind`, making it a bit lighter.
+~~The implementation of [p-limit](https://github.com/sindresorhus/p-limit) has been simplified to eliminate the asynchronous context switching and the call to `AsyncResource.bind`, making it a bit lighter.~~
 
-[p-limit](https://github.com/sindresorhus/p-limit)の実装を単純化して非同期コンテキストの切り替えをなくし`AsyncResource.bind`の呼び出しを不要にしたことでちょっとだけ軽量化を実現しています。
+~~[p-limit](https://github.com/sindresorhus/p-limit)の実装を単純化して非同期コンテキストの切り替えをなくし`AsyncResource.bind`の呼び出しを不要にしたことでちょっとだけ軽量化を実現しています。~~
+
+The above features are almost gone now that [the pull request](https://github.com/sindresorhus/p-limit/pull/83) has been merged.
+
+[Pull Request](https://github.com/sindresorhus/p-limit/pull/83)がマージされたので上記の特徴はほぼなくなってしまいました。
+
+Another remaining feature is that unlike [p-limit](https://github.com/sindresorhus/p-limit), it also supports CommonJS
+
+残ったもうひとつの特徴は[p-limit](https://github.com/sindresorhus/p-limit)と違いCommonJSにも対応しています。
 
 ## Install
 
