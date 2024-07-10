@@ -17,9 +17,11 @@ interface LimitFunctionBase {
      * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
      */
     <Parameters extends unknown[], ReturnType>(
-        task: (...parameters: Parameters) => ReturnType,
+        task: (
+            ...parameters: Parameters
+        ) => ReturnType | PromiseLike<ReturnType>,
         ...parameters: Parameters
-    ): Promise<Awaited<ReturnType>>;
+    ): Promise<ReturnType | Awaited<ReturnType>>;
 }
 
 /** `limit`関数 */
@@ -44,12 +46,6 @@ export interface LimitFunction extends LimitFunctionBase {
     clearQueue(): void;
 }
 
-type PromiseR<F extends (...p: never) => unknown> = F extends (
-    ...p: never
-) => infer R
-    ? Promise<Awaited<R>>
-    : never;
-
 const nextMicroTask = Promise.resolve();
 
 /**
@@ -70,21 +66,31 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     /** 待機中のタスク */
     const queue = Queue<() => void>();
 
-    return generate(async (task, ...parameters): PromiseR<typeof task> => {
-        // 先に余裕があれば開始する処理を予約しておきます
-        void nextMicroTask.then(resumeNext);
-        // 待機状態で開始します
-        await new Promise<void>(queue.enqueue);
-        try {
-            // eslint-disable-next-line @typescript-eslint/await-thenable -- taskは通常Promiseを返すので問題ない
-            return await task(...parameters);
-        } finally {
-            // taskが完了したら1つ減らします
-            --activeCount;
-            // 次のタスクを開始します。
-            resumeNext();
-        }
-    });
+    return Object.defineProperties(
+        (async (task, ...parameters) => {
+            // 先に余裕があれば開始する処理を予約しておきます
+            void nextMicroTask.then(resumeNext);
+            // 待機状態で開始します
+            await new Promise<void>(queue.enqueue);
+            try {
+                return await task(...parameters);
+            } finally {
+                // taskが完了したら1つ減らします
+                --activeCount;
+                // 次のタスクを開始します。
+                resumeNext();
+            }
+        }) satisfies LimitFunctionBase, // satisfiesを指定することで引数を型推論します
+        {
+            activeCount: { get: () => activeCount },
+            pendingCount: { get: () => queue.size },
+            clearQueue: { value: queue.clear, writable: true },
+            concurrency: {
+                get: () => concurrency,
+                set: setConcurrency,
+            },
+        } satisfies PropertyDescriptorMapOf<LimitFunction>, // satisfiesを指定することでプロパティの過不足を防ぎます。
+    );
 
     /**
      * `concurrency`が適切なものかチェックして、不適切であれば例外を投げます。
@@ -131,22 +137,5 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
         concurrency = newConcurrency;
         // 増えた分だけ待機解除します
         while (resumeNext());
-    }
-
-    /**
-     * limit関数にLimitFunctionのプロパティを付加して返します。
-     * @param limit プロパティを付加するlimit関数
-     * @returns LimitFunctionのプロパティ付きlimit関数
-     */
-    function generate(limit: LimitFunctionBase): LimitFunction {
-        return Object.defineProperties(limit, {
-            activeCount: { get: () => activeCount },
-            pendingCount: { get: () => queue.size },
-            clearQueue: { value: queue.clear, writable: true },
-            concurrency: {
-                get: () => concurrency,
-                set: setConcurrency,
-            },
-        } satisfies PropertyDescriptorMapOf<LimitFunction>);
     }
 }
