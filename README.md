@@ -68,13 +68,13 @@ await Promise.all(tasks.map((task) => limit(() => task.execute())));
 ```ts
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
- * @param concurrency 並列実行する最大数を指定します。
+ * @param concurrencySpec 並列実行する最大数を指定します。
  *
  * 1以上の数値を指定できます。
  * @returns 生成した`limit`関数を返します。
- * @throws concurrencyに不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
+ * @throws `concurrencySpec`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
-export default function pLimit(concurrency: number): LimitFunction;
+export default function pLimit(concurrencySpec: number): LimitFunction;
 
 /** `limit`関数 */
 export interface LimitFunction {
@@ -87,7 +87,9 @@ export interface LimitFunction {
    * @returns タスクの実行が完了したらタスクの返値を返すPromiseを返します。
    */
   <Parameters extends unknown[], ReturnType>(
-    task: (...parameters: Parameters) => PromiseLike<ReturnType>,
+    task: (
+      ...parameters: Parameters
+    ) => ReturnType | PromiseLittleLike<ReturnType>,
     ...parameters: Parameters
   ): Promise<ReturnType>;
 
@@ -96,11 +98,26 @@ export interface LimitFunction {
   /** 現在実行待機中のタスクの数 */
   readonly pendingCount: number;
   /**
+   * 同時実行数の最大値。
+   *
+   * より大きい数値に変更すると、待機中のタスクから追加で実行開始します。
+   *
+   * より小さい数値に変更した場合は何もしません。
+   */
+  concurrency: number;
+  /**
    * 現在実行待機中のタスクをクリアして実行開始しないようにします。
    *
    * すでに実行開始済のタスクには何もしません。
    */
   clearQueue(): void;
+}
+
+/**
+ * Awaitedで型を取得できる最低限のinterface
+ */
+interface PromiseLittleLike<T> {
+  then(onfulfilled: (value: T) => unknown, ...rest: never): unknown;
 }
 ```
 
