@@ -562,6 +562,94 @@ describe('p-limit', () => {
             expect(limit.concurrency).toBe(5);
         });
     });
+    describe('promise like', () => {
+        test('onfulfilled with one parameter', async () => {
+            const limit = pLimit(1);
+            await expect(
+                Promise.race([
+                    limit(() => ({
+                        then(f: (v: number) => void) {
+                            f(1);
+                        },
+                    })),
+                    timeout(0).then(() =>
+                        Promise.reject(new Error('never finished')),
+                    ),
+                ]),
+            ).resolves.toBe(1);
+        });
+        test('onfulfilled with two parameters', async () => {
+            const limit = pLimit(1);
+            await expect(
+                Promise.race([
+                    limit(() => ({
+                        then(f: (v: number, _: unknown) => void) {
+                            f(1, {});
+                        },
+                    })),
+                    timeout(0).then(() =>
+                        Promise.reject(new Error('never finished')),
+                    ),
+                ]),
+            ).resolves.toBe(1);
+        });
+        test('onfulfilled without parameter', async () => {
+            const limit = pLimit(1);
+            await expect(
+                Promise.race([
+                    limit(() => ({
+                        then(f: () => void) {
+                            f();
+                        },
+                    })),
+                    timeout(0).then(() =>
+                        Promise.reject(new Error('never finished')),
+                    ),
+                ]),
+            ).resolves.toBeUndefined();
+        });
+        test('then with three parameters', async () => {
+            const limit = pLimit(1);
+            await expect(
+                Promise.race([
+                    limit(() => ({
+                        then(f: (v: number) => void, _2: unknown, _3: unknown) {
+                            f(1);
+                        },
+                    })),
+                    timeout(0).then(() =>
+                        Promise.reject(new Error('never finished')),
+                    ),
+                ]),
+            ).resolves.toBe(1);
+        });
+        test('then with non-function', async () => {
+            const limit = pLimit(1);
+            await expect(
+                Promise.race([
+                    limit(() => ({
+                        then(f: unknown) {
+                            f;
+                        },
+                    })),
+                    timeout(0).then(() =>
+                        Promise.reject(new Error('never finished')),
+                    ),
+                ]),
+            ).rejects.toThrow('never finished');
+        });
+        test('then is non-function', async () => {
+            const limit = pLimit(1);
+            await expect(
+                Promise.race([
+                    limit(() => ({ then: 1 })),
+                    timeout(0).then(() =>
+                        Promise.reject(new Error('never finished')),
+                    ),
+                ]),
+            ).resolves.toEqual({ then: 1 });
+        });
+    });
 });
 
 function timeout(elapse: number): Promise<void> {

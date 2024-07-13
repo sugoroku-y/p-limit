@@ -1,6 +1,13 @@
 import { Queue } from './Queue';
 
 /**
+ * Awaitedで型を取得できる最低限のinterface
+ */
+interface PromiseLittleLike<T> {
+    then(onfulfilled: (value: T) => unknown, ...rest: never): unknown;
+}
+
+/**
  * LimitFunctionの関数部分の定義です。
  *
  * 型関数を使って関数部分を抽出するとGenericsが消えてしまうので分割します。
@@ -19,9 +26,9 @@ interface LimitFunctionBase {
     <Parameters extends unknown[], ReturnType>(
         task: (
             ...parameters: Parameters
-        ) => ReturnType | PromiseLike<ReturnType>,
+        ) => ReturnType | PromiseLittleLike<ReturnType>,
         ...parameters: Parameters
-    ): Promise<ReturnType | Awaited<ReturnType>>;
+    ): Promise<ReturnType>;
 }
 
 /** `limit`関数 */
