@@ -94,7 +94,12 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
             clearQueue: { value: queue.clear, writable: true },
             concurrency: {
                 get: () => concurrency,
-                set: setConcurrency,
+                set: (newConcurrency: number) => {
+                    validation(newConcurrency);
+                    concurrency = newConcurrency;
+                    // 増えた分だけ待機解除します
+                    while (resumeNext());
+                },
             },
         } satisfies PropertyDescriptorMapOf<LimitFunction>, // satisfiesを指定することでプロパティの過不足を防ぎます。
     );
@@ -129,20 +134,5 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
             }
         }
         return false;
-    }
-
-    /**
-     * 同時実行数の最大値を設定します。
-     *
-     * より大きい数値に変更すると、待機中のタスクから追加で実行開始します。
-     *
-     * より小さい数値に変更した場合は何もしません。
-     * @param newConcurrency 同時実行数の最大値。
-     */
-    function setConcurrency(newConcurrency: number) {
-        validation(newConcurrency);
-        concurrency = newConcurrency;
-        // 増えた分だけ待機解除します
-        while (resumeNext());
     }
 }
