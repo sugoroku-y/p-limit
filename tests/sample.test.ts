@@ -109,11 +109,11 @@ describe('sample', () => {
                         : [
                               'node',
                               '--import',
-                              /* js */ `data:text/javascript,
+                              /* js */ `"data:text/javascript,
                                 import { register } from 'node:module';
                                 import { pathToFileURL } from 'node:url';
                                 register('ts-node/esm', pathToFileURL('./'));
-                                `.replaceAll(/\s+/g, ''),
+                                "`.replaceAll(/\s+/g, ''),
                               'index.ts',
                           ]),
                 ),
@@ -127,6 +127,7 @@ function spawnPromises(
     options: SpawnOptionsWithoutStdio,
     ...[command, ...args]: string[]
 ) {
+    process.stdout.write([command, ...args].join(' ').concat('\n'));
     const headings =
         typeof options.cwd === 'string' ? `${basename(options.cwd)}: ` : '';
     const npm = spawn(command, args, options);
