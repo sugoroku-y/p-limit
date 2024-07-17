@@ -53,8 +53,6 @@ export interface LimitFunction extends LimitFunctionBase {
     clearQueue(): void;
 }
 
-const nextMicroTask = Promise.resolve();
-
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
  * @param concurrencySpec 並列実行する最大数を指定します。
@@ -76,7 +74,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     return Object.defineProperties(
         (async (task, ...parameters) => {
             // 先に余裕があれば開始する処理を予約しておきます
-            void nextMicroTask.then(resumeNext);
+            queueMicrotask(resumeNext);
             // 待機状態で開始します
             await new Promise<void>(queue.enqueue);
             try {
