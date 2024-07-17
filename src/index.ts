@@ -59,7 +59,7 @@ export interface LimitFunction extends LimitFunctionBase {
  *
  * 1以上の数値を指定できます。
  * @returns 生成した`limit`関数を返します。
- * @throws `concurrency`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
+ * @throws `concurrencySpec`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
 export default function pLimit(concurrencySpec: number): LimitFunction {
     /** 並列実行する最大数 */
@@ -103,7 +103,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     /**
      * `concurrency`の値を設定します。
      *
-     * 指定した値は適切なものかチェックして、不適切であれば例外を投げます。
+     * 指定した値が適切なものかチェックして、不適切であれば例外を投げます。
      * @param newConcurrency 並列実行する最大数を指定します。
      * @throws `newConcurrency`が不正な値(数値以外や1未満の数値)だったときに例外を投げます。
      */
@@ -118,8 +118,12 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     }
 
     /**
-     * pendingで生成されたPromiseの待機状態を解除します。
+     * Promiseの待機状態を解除します。
      * @returns 実際に待機状態を解除したときはtrueを返します。
+     *
+     * 以下の状態のときはfalseを返します。
+     * - activeCountがconcurrency以上
+     * - queueが空
      */
     function resumeNext(): boolean {
         if (activeCount < concurrency) {
