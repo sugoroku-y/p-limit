@@ -62,10 +62,9 @@ export interface LimitFunction extends LimitFunctionBase {
  * @throws `concurrency`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
 export default function pLimit(concurrencySpec: number): LimitFunction {
-    validation(concurrencySpec);
-
     /** 並列実行する最大数 */
-    let concurrency = concurrencySpec;
+    let concurrency: number;
+    setConcurrency(concurrencySpec);
     /** 実行中のタスクの数 */
     let activeCount = 0;
     /** 待機中のタスク */
@@ -93,8 +92,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
             concurrency: {
                 get: () => concurrency,
                 set: (newConcurrency: number) => {
-                    validation(newConcurrency);
-                    concurrency = newConcurrency;
+                    setConcurrency(newConcurrency);
                     // 増えた分だけ待機解除します
                     while (resumeNext());
                 },
@@ -103,18 +101,20 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
     );
 
     /**
-     * `concurrency`が適切なものかチェックして、不適切であれば例外を投げます。
-     * @param concurrency 並列実行する最大数を指定します。
-     * @throws `concurrency`が不正な値(数値以外や1未満の数値)だったときに例外を投げます。
+     * `concurrency`の値を設定します。
+     *
+     * 指定した値は適切なものかチェックして、不適切であれば例外を投げます。
+     * @param newConcurrency 並列実行する最大数を指定します。
+     * @throws `newConcurrency`が不正な値(数値以外や1未満の数値)だったときに例外を投げます。
      */
-    function validation(concurrency: number) {
+    function setConcurrency(newConcurrency: number) {
         // 引数のチェック
-        if (typeof concurrency === 'number' && concurrency >= 1) {
-            return;
+        if (!(typeof newConcurrency === 'number' && newConcurrency >= 1)) {
+            throw new TypeError(
+                'Expected `concurrency` to be a number from 1 and up',
+            );
         }
-        throw new TypeError(
-            'Expected `concurrency` to be a number from 1 and up',
-        );
+        concurrency = newConcurrency;
     }
 
     /**
