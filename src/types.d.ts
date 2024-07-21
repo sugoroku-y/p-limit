@@ -59,7 +59,7 @@ type AccessorPropertyDescriptor<
               : { set?: Setter }),
     never
 >;
-type ValuePropertyDescriptor<
+type DataPropertyDescriptor<
     T = void,
     Readonly extends boolean = never,
     Value = IsVoid<T> extends true ? unknown : T,
@@ -82,7 +82,7 @@ type ValuePropertyDescriptor<
  */
 type StrictPropertyDescriptor<T = void, Readonly extends boolean = never> =
     | AccessorPropertyDescriptor<T, Readonly>
-    | ValuePropertyDescriptor<T, Readonly>;
+    | DataPropertyDescriptor<T, Readonly>;
 
 /**
  * 適切なPropertyDescriptorかどうかを判別する。
