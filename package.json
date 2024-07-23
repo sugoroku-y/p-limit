@@ -28,8 +28,8 @@
         "@sugoroku-y/jest-runner-prettier": "github:sugoroku-y/jest-runner-prettier",
         "@types/jest": "^29.5.12",
         "@types/node": "^20.14.11",
-        "@typescript-eslint/eslint-plugin": "^7.16.1",
-        "@typescript-eslint/parser": "^7.16.1",
+        "@typescript-eslint/eslint-plugin": "^7.17.0",
+        "@typescript-eslint/parser": "^7.17.0",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-import-resolver-typescript": "^3.6.1",
@@ -46,6 +46,6 @@
         "prettier": "^3.3.3",
         "ts-jest": "^29.2.3",
         "ts-node": "^10.9.2",
-        "typescript": "^5.5.3"
+        "typescript": "^5.5.4"
     }
 }
