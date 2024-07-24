@@ -25,55 +25,49 @@ export interface Queue<T> extends Iterable<T> {
  */
 export function Queue<T>(): Queue<T> {
     interface Node {
+        value: T;
         next?: Node;
     }
+    // terminal.nextはキューの先頭(headなどにしなかったのはnextで揃えることでenqueueで楽をするため)
+    type Terminal =
+        // nextとtailのどちらもが存在しているか
+        | { next: Node; tail: Node }
+        // どちらもが存在していないかの二択
+        | { next?: undefined; tail?: undefined };
 
-    let terminal: { head: Node; tail: Node } | undefined;
+    const terminal: Terminal = {};
     let size = 0;
-    const values = new WeakMap<Node, T>();
 
     function clear() {
-        terminal = undefined;
+        // クリアするのはnextだけでよい
+        terminal.next = undefined;
         size = 0;
     }
 
     function enqueue(value: T) {
-        const node: Node = {};
-        values.set(node, value);
-        if (terminal) {
-            // キューが空でなければ末尾の次に追加
-            terminal.tail.next = node;
-            // 末尾のNodeを記憶しておく
-            terminal.tail = node;
-            ++size;
-        } else {
-            // キューが空ならnode1つだけのキューにする
-            terminal = { head: node, tail: node };
-            size = 1;
-        }
+        const node: Node = { value };
+        // キューに存在していれば末尾の次に、空ならば先頭に追加
+        (terminal.next ? terminal.tail : terminal).next = node;
+        // 末尾のNodeを記憶しておく
+        terminal.tail = node;
+        ++size;
     }
 
     function dequeue() {
-        if (!terminal) {
+        if (!terminal.next) {
             // キューが空ならundefinedを返す。
             return undefined;
         }
-        const { next } = terminal.head;
-        const value = values.get(terminal.head);
-        if (next) {
-            // まだNodeが残っていれば先頭を次のNodeに差し替え
-            terminal.head = next;
-            --size;
-        } else {
-            clear();
-        }
+        const { next, value } = terminal.next;
+        // 先頭を次のNodeに差し替え(↑のif文でnextにundefinedが代入できなくなっているので型アサーションを追加)
+        (terminal as Terminal).next = next;
+        --size;
         return value;
     }
 
     function* iterator() {
-        for (let node = terminal?.head; node; node = node.next) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- nodeは常にvalueを持っているはず
-            yield values.get(node)!;
+        for (let node = terminal.next; node; node = node.next) {
+            yield node.value;
         }
     }
 
