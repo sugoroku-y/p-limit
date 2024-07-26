@@ -1,3 +1,4 @@
+import type { PropertyDescriptorMapOf } from './descriptors';
 import { Queue } from './Queue';
 
 /**
