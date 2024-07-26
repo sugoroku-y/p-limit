@@ -55,15 +55,17 @@ export interface LimitFunction extends LimitFunctionBase {
 
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
- * @param concurrency 並列実行する最大数を指定します。
+ * @param concurrencySpec 並列実行する最大数を指定します。
  *
  * 1以上の数値を指定できます。
  * @returns 生成した`limit`関数を返します。
  * @throws `concurrencySpec`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
-export default function pLimit(concurrency: number): LimitFunction {
-    // 引数のチェック
-    validation();
+export default function pLimit(concurrencySpec: number): LimitFunction {
+    /** 並列実行する最大数 */
+    let concurrency: number;
+    // 引数のチェック、設定
+    setConcurrency(concurrencySpec);
     /** 実行中のタスクの数 */
     let activeCount = 0;
     /** 待機中のタスク */
@@ -91,9 +93,7 @@ export default function pLimit(concurrency: number): LimitFunction {
             concurrency: {
                 get: () => concurrency,
                 set: (newConcurrency: number) => {
-                    // eslint-disable-next-line no-param-reassign -- ここでは例外的に設定を許可します。ほかでは禁止します。
-                    concurrency = newConcurrency;
-                    validation();
+                    setConcurrency(newConcurrency);
                     // 増えた分だけ待機解除します
                     while (resumeNext());
                 },
@@ -102,16 +102,20 @@ export default function pLimit(concurrency: number): LimitFunction {
     );
 
     /**
+     * concurrencyに値を設定します。
+     *
      * 指定した値が適切なものかチェックして、不適切であれば例外を投げます。
-     * @throws `concurrency`が不正な値(数値以外や1未満の数値)だったときに例外を投げます。
+     * @param concurrencySpec 並列実行する最大数を指定します。
+     * @throws `concurrencySpec`が不正な値(数値以外や1未満の数値)だったときに例外を投げます。
      */
-    function validation() {
+    function setConcurrency(concurrencySpec: number) {
         // concurrencyのチェック
-        if (!(typeof concurrency === 'number' && concurrency >= 1)) {
+        if (!(typeof concurrencySpec === 'number' && concurrencySpec >= 1)) {
             throw new TypeError(
                 'Expected `concurrency` to be a number from 1 and up',
             );
         }
+        concurrency = concurrencySpec;
     }
 
     /**

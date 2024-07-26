@@ -45,11 +45,11 @@ export interface LimitFunction extends LimitFunctionBase {
 }
 /**
  * 並列実行するタスクを指定した値で制限する`limit`関数を生成します。
- * @param concurrency 並列実行する最大数を指定します。
+ * @param concurrencySpec 並列実行する最大数を指定します。
  *
  * 1以上の数値を指定できます。
  * @returns 生成した`limit`関数を返します。
  * @throws `concurrencySpec`に不正な値(数値以外や1未満の数値)を指定したときに例外を投げます。
  */
-export default function pLimit(concurrency: number): LimitFunction;
+export default function pLimit(concurrencySpec: number): LimitFunction;
 export {};
