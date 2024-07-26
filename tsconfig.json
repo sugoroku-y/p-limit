@@ -27,9 +27,7 @@
         "noImplicitOverride": true,
         "noPropertyAccessFromIndexSignature": true,
         "allowUnusedLabels": false,
-        "allowUnreachableCode": false,
-
-        "skipLibCheck": true
+        "allowUnreachableCode": false
     },
     "include": ["./src"],
     "exclude": []
