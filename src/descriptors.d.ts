@@ -94,19 +94,19 @@ export type DataPropertyDescriptor<
 type PreventPropertyOfAnotherType<T> =
     | T
     // 他の型が持つプロパティの所持を禁止します
-    | ({ [K in T extends T ? keyof T : never]?: never } & NonExistent); // 空オブジェクトに合致しないように存在しないオブジェクト型にします
+    | Unexistent<Partial<Record<T extends T ? keyof T : never, never>>>; // 空オブジェクトに合致しないように存在しないオブジェクト型にします
 
 /** 存在しないシンボル */
 declare const absence: unique symbol;
 
 /**
- * 型としても実体としても存在しない型。
+ * 型としても実体としても存在しない型にする型関数。
  *
  * absenceはexportしていないので外部からは参照することもできず、型として存在できません。
  *
- * 存在しないシンボルをキー名にしたnever型の必須プロパティを持つので実体化もできません。
+ * 存在しないシンボルをキー名にした必須プロパティを持つので実体化もできません。
  */
-type NonExistent = { [absence]: never };
+type Unexistent<T> = T & { [absence]: never };
 
 type IsReadonlyProperty<
     Target extends object,
