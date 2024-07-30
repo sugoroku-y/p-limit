@@ -30,15 +30,15 @@ export type AccessorPropertyDescriptor<
     T,
     Readonly extends boolean = boolean,
 > = Omit<
-    Omit<PropertyDescriptor, 'get' | 'set' | 'value' | 'writable'> & {
+    Omit<PropertyDescriptor, 'get' | 'set' | 'value' | 'writable'> &
         // getが未指定でもエラーにはなりませんが、() => undefinedを指定しているのと同じなので指定必須とします。
-        get: () => T;
-    } & (boolean extends Readonly
+        Required<Pick<TypedPropertyDescriptor<T>, 'get'>> &
+        (boolean extends Readonly
             ? // Readonlyの省略時(boolean指定時)はSetter省略可
-              { set?: (v: T) => void }
-            : // 変更可の場合はSetter指定必須
-              false extends Readonly
-              ? { set: (v: T) => void }
+              Pick<TypedPropertyDescriptor<T>, 'set'>
+            : false extends Readonly
+              ? // 変更可の場合はSetter指定必須
+                Required<Pick<TypedPropertyDescriptor<T>, 'set'>>
               : // 参照専用の場合はSetter指定禁止
                 unknown),
     never
@@ -53,18 +53,13 @@ export type DataPropertyDescriptor<
     T,
     Readonly extends boolean = boolean,
 > = Omit<
-    Omit<PropertyDescriptor, 'get' | 'set' | 'value' | 'writable'> & {
+    Omit<PropertyDescriptor, 'get' | 'set' | 'value' | 'writable'> &
         // valueの指定がなくてもエラーにはなりませんが、undefinedを指定しているのと同じなので指定必須とします。
-        value: T;
-    } & (
-            | (true extends Readonly
-                  ? // 参照専用の場合はwritableは指定しないか、falseのみ指定可
-                    { writable?: false }
-                  : never)
-            | (false extends Readonly
-                  ? // 変更可の場合はwritableにtrueの指定必須
-                    { writable: true }
-                  : never)
+        Required<Pick<TypedPropertyDescriptor<T>, 'value'>> &
+        // 参照専用の場合はwritableは指定しないか、falseのみ指定可
+        (| (true extends Readonly ? { writable?: false } : never)
+            // 変更可の場合はwritableにtrueの指定必須
+            | (false extends Readonly ? { writable: true } : never)
         ),
     // Readonlyの省略時(boolean指定時)は上記のUnionとなり{ writable?: boolean }となります
     never
