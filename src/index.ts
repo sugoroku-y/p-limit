@@ -93,7 +93,7 @@ export default function pLimit(concurrencySpec: number): LimitFunction {
             clearQueue: { value: queue.clear, writable: true },
             concurrency: {
                 get: () => concurrency,
-                set: (newConcurrency: number) => {
+                set: (newConcurrency) => {
                     setConcurrency(newConcurrency);
                     // 増えた分だけ待機解除します
                     while (resumeNext());
