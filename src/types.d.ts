@@ -42,8 +42,22 @@ type TypeOfPropertyDescriptorMap<D extends PropertyDescriptorMap> =
 /**
  * PropertyDescriptorで実装されるプロパティの型を返す。
  */
-type TypeOfPropertyDescriptor<D extends PropertyDescriptor> =
-    D extends TypedPropertyDescriptor<infer R> ? R : never;
+type TypeOfPropertyDescriptor<D extends PropertyDescriptor> = D extends
+    | { get: unknown; value: unknown }
+    | { set: unknown; value: unknown }
+    ? // Accessorがあるのにvalueもある場合はエラー
+      never
+    : // getterがあればその返値の型
+      D extends { get: () => infer R }
+      ? R
+      : // getterがなくてsetterがあればその引数の型
+        D extends { set: (v: infer R) => unknown }
+        ? R
+        : D extends { value: infer R }
+          ? // valueがあればその型
+            R
+          : // valueもなければunknown
+            unknown;
 
 /**
  * 参照専用のプロパティ向けのPropertyDescriptorかどうかを判別する。
