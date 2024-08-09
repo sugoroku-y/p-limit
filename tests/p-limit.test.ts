@@ -1,5 +1,10 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import pLimit, { type LimitFunction } from '../src';
+import wrappedImport from './wrappedImport';
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- ts-jestで実行時にはエラーにならないので@ts-ignoreを使う
+// @ts-ignore 型としてのimportなのでCommonJSかESModuleかは関係ない
+const pLimitOriginal = wrappedImport<typeof import('p-limit')>('p-limit');
 
 describe('p-limit', () => {
     //        |        0|      100|      200|      300|      400|      500|      600|      700|      800|      900|     1000|     1100|
@@ -62,7 +67,7 @@ describe('p-limit', () => {
     ] as const;
 
     describe.each([
-        ['original', import('p-limit')],
+        ['original', pLimitOriginal],
         ['this', Promise.resolve({ default: pLimit })],
     ])('compatibility %s', (_, pLimitPromise) => {
         let pLimit: (concurrency: number) => LimitFunction;
@@ -166,7 +171,7 @@ describe('p-limit', () => {
         expect(() => pLimit(Infinity)).not.toThrow();
     });
     test('performance', async () => {
-        const { default: original } = await import('p-limit');
+        const { default: original } = await pLimitOriginal;
 
         const originalResult = await getPerformance(original as typeof pLimit);
         const thisResult = await getPerformance(pLimit);

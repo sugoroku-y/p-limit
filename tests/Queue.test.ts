@@ -1,8 +1,13 @@
 import { Queue } from '../src/Queue';
+import wrappedImport from './wrappedImport';
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- ts-jestで実行時にはエラーにならないので@ts-ignoreを使う
+// @ts-ignore 型としてのimportなのでCommonJSかESModuleかは関係ない
+const YoctoQueue = wrappedImport<typeof import('yocto-queue')>('yocto-queue');
 
 describe('Queue', () => {
     test.each([
-        ['yocto-queue', import('yocto-queue')],
+        ['yocto-queue', YoctoQueue],
         ['mime', Promise.resolve({ default: Queue })],
     ])('compatible %s', async (_, m) => {
         const { default: Queue } = await m;
@@ -40,7 +45,7 @@ describe('Queue', () => {
         expect(queue.dequeue()).toBe(1);
     });
     test('method yocto-queue', async () => {
-        const { default: Queue } = await import('yocto-queue');
+        const { default: Queue } = await YoctoQueue;
         const queue = new Queue<number>();
         // eslint-disable-next-line @typescript-eslint/unbound-method -- -
         expect(() => (0, queue.enqueue)(1)).toThrow();
