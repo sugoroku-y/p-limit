@@ -38,14 +38,14 @@ export function Queue<T>(): Queue<T> {
         // nextとtailのどちらもが存在しているか
         | { next: Node; tail: Node }
         // どちらもが存在していないかの二択
-        | { next?: undefined; tail?: undefined };
+        | { next?: never; tail?: never };
 
     const terminal: Terminal = {};
     let size = 0;
 
     function clear() {
-        // クリアするのはnextだけでよい
-        terminal.next = undefined;
+        delete terminal.next;
+        delete terminal.tail;
         size = 0;
     }
 
@@ -64,9 +64,14 @@ export function Queue<T>(): Queue<T> {
             return undefined;
         }
         const { next, value } = terminal.next;
-        // 先頭を次のNodeに差し替え(↑のif文でnextにundefinedが代入できなくなっているので型アサーションを追加)
-        (terminal as Terminal).next = next;
-        --size;
+        if (next) {
+            // 先頭を次のNodeに差し替え
+            terminal.next = next;
+            --size;
+        } else {
+            // 次のNodeがないのでクリア
+            clear();
+        }
         return value;
     }
 
