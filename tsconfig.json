@@ -30,5 +30,5 @@
         "allowUnreachableCode": false
     },
     "include": ["./src"],
-    "exclude": []
+    "exclude": ["./src/*.mts"]
 }

@@ -1,5 +1,7 @@
 import { createRequire } from 'module';
+import type { LimitFunction } from './index.js';
 const require = createRequire(import.meta.url);
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- -
-const { default: pLimit } = require('.');
+const { default: pLimit } = require('.') as {
+    default: (concurrencySpec: number) => LimitFunction;
+};
 export default pLimit;

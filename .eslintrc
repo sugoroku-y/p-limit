@@ -24,6 +24,7 @@
         "sourceType": "commonjs",
         "project": [
             "tsconfig.json",
+            "tsconfig-mts.json",
             "tests/tsconfig.json",
             "tsconfig-eslint.json"
         ]
