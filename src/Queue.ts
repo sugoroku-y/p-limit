@@ -14,6 +14,11 @@ export interface Queue<T> extends Iterable<T> {
      */
     dequeue(this: void): T | undefined;
     /**
+     * Get the next value in the queue without removing it.
+     * @returns The value or `undefined` if the queue is empty.
+     */
+    peek(): T | undefined;
+    /**
      * Clear the queue.
      */
     clear(this: void): void;
@@ -65,6 +70,10 @@ export function Queue<T>(): Queue<T> {
         return value;
     }
 
+    function peek() {
+        return terminal.next?.value;
+    }
+
     function* iterator() {
         for (let node = terminal.next; node; node = node.next) {
             yield node.value;
@@ -77,6 +86,7 @@ export function Queue<T>(): Queue<T> {
         },
         enqueue,
         dequeue,
+        peek,
         clear,
         [Symbol.iterator]: iterator,
     };

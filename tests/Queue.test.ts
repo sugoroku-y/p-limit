@@ -20,6 +20,7 @@ describe('Queue', () => {
         queue.enqueue(11);
         queue.enqueue(12);
         queue.enqueue(13);
+        expect(queue.peek()).toBe(11);
         expect([...queue]).toEqual([11, 12, 13]);
         log.push(queue.dequeue());
         log.push(queue.dequeue());

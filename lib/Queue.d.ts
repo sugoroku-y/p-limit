@@ -14,6 +14,11 @@ export interface Queue<T> extends Iterable<T> {
      */
     dequeue(this: void): T | undefined;
     /**
+     * Get the next value in the queue without removing it.
+     * @returns The value or `undefined` if the queue is empty.
+     */
+    peek(): T | undefined;
+    /**
      * Clear the queue.
      */
     clear(this: void): void;
