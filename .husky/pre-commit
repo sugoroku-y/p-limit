@@ -1,1 +1,1 @@
-npm test --lint -- --silent --cache
+npm test --lint --pre-commit

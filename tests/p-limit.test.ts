@@ -170,7 +170,7 @@ describe('p-limit', () => {
         expect(() => pLimit(Number.MAX_SAFE_INTEGER)).not.toThrow();
         expect(() => pLimit(Infinity)).not.toThrow();
     });
-    test('performance', async () => {
+    test.performance('performance', async () => {
         const { default: original } = await pLimitOriginal;
 
         const originalResult = await getPerformance(original as typeof pLimit);

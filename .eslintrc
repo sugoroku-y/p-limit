@@ -118,6 +118,15 @@
             }
         ],
         "import/order": ["error"],
+        "jest/no-standalone-expect": [
+            "error",
+            {
+                "additionalTestBlockFunctions": [
+                    "test.performance",
+                    "test.performance.each"
+                ]
+            }
+        ],
         // テンプレートリテラルでundefinedやunknownを使えるように
         "@typescript-eslint/restrict-template-expressions": "off",
         // _で始まる変数/引数等は対象外

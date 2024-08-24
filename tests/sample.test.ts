@@ -7,7 +7,7 @@ import { mkdir, rm, writeFile } from 'fs/promises';
 import { basename, resolve } from 'path';
 
 describe('sample', () => {
-    test.each(['esm', 'cjs'])(
+    test.performance.each(['esm', 'cjs'])(
         'sample %s',
         async (dir) => {
             const options = {
