@@ -50,4 +50,71 @@ describe('Queue', () => {
         // eslint-disable-next-line @typescript-eslint/unbound-method -- -
         expect(() => (0, queue.enqueue)(1)).toThrow();
     });
+    test.performance.each([100, 1000, 10000, 100000, 1000000])(
+        'performance %d',
+        async (count) => {
+            function sample(Queue: () => Queue<number>, count: number): number {
+                const queue = Queue();
+                const start = performance.now();
+                for (let c = count; c; --c) {
+                    queue.enqueue(c);
+                }
+                while (queue.dequeue());
+                return performance.now() - start;
+            }
+            function avarage(...numbers: number[]): number {
+                return numbers.reduce((a, b) => a + b) / numbers.length;
+            }
+            const mock = jest.fn();
+            mock();
+            const mine = Queue;
+            const yQueue = (await YoctoQueue).default;
+            const yocto = () => new yQueue<number>();
+            // 交互に実行して最大値と最小値を除いた平均を取って比較
+            const results = [
+                ['m', sample(mine, count)],
+                ['y', sample(yocto, count)],
+                ['m', sample(mine, count)],
+                ['y', sample(yocto, count)],
+                ['m', sample(mine, count)],
+                ['y', sample(yocto, count)],
+                ['m', sample(mine, count)],
+                ['y', sample(yocto, count)],
+                ['m', sample(mine, count)],
+                ['y', sample(yocto, count)],
+                ['m', sample(mine, count)],
+                ['y', sample(yocto, count)],
+            ] as const;
+            const mResults = results
+                .filter(([n]) => n === 'm')
+                .map(([, v]) => v);
+            const mResultMax = Math.max(...mResults);
+            const mResultMin = Math.min(...mResults);
+            const yResults = results
+                .filter(([n]) => n === 'y')
+                .map(([, v]) => v);
+            const yResultMax = Math.max(...yResults);
+            const yResultMin = Math.min(...yResults);
+            const mResult = avarage(
+                ...mResults.filter((e) => e !== mResultMax && e !== mResultMin),
+            );
+            const yResult = avarage(
+                ...yResults.filter((e) => e !== yResultMax && e !== yResultMin),
+            );
+            console.log(
+                `count: ${count}
+                mResult: ${mResult}
+                yResult: ${yResult}
+                mResult / yResult: ${mResult / yResult}
+                `.replaceAll(
+                    `
+                `,
+                    '\n',
+                ),
+            );
+            // 1.5倍までは許容
+            expect(mResult).toBeLessThan(yResult * 1.5);
+        },
+        60000,
+    );
 });

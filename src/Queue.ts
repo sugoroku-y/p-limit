@@ -31,26 +31,26 @@ export interface Queue<T> extends Iterable<T> {
 export function Queue<T>(): Queue<T> {
     interface Node {
         value: T;
-        next?: Node;
+        next: Node | undefined;
     }
     // terminal.nextはキューの先頭(headなどにしなかったのはnextで揃えることでenqueueで楽をするため)
     type Terminal =
         // nextとtailのどちらもが存在しているか
         | { next: Node; tail: Node }
         // どちらもが存在していないかの二択
-        | { next?: never; tail?: never };
+        | { next: undefined; tail: undefined };
 
-    const terminal: Terminal = {};
+    const terminal: Terminal = { next: undefined, tail: undefined };
     let size = 0;
 
     function clear() {
-        delete terminal.next;
-        delete terminal.tail;
+        terminal.next = undefined;
+        terminal.tail = undefined;
         size = 0;
     }
 
     function enqueue(value: T) {
-        const node: Node = { value };
+        const node: Node = { value, next: undefined };
         // キューに存在していれば末尾の次に、空ならば先頭に追加
         (terminal.next ? terminal.tail : terminal).next = node;
         // 末尾のNodeを記憶しておく
@@ -64,14 +64,9 @@ export function Queue<T>(): Queue<T> {
             return undefined;
         }
         const { next, value } = terminal.next;
-        if (next) {
-            // 先頭を次のNodeに差し替え
-            terminal.next = next;
-            --size;
-        } else {
-            // 次のNodeがないのでクリア
-            clear();
-        }
+        // 先頭を次のNodeに差し替え
+        (terminal as Terminal).next = next;
+        --size;
         return value;
     }
 
