@@ -1,6 +1,6 @@
 {
     "name": "@sugoroku-y/p-limit",
-    "version": "0.4.11",
+    "version": "0.4.12",
     "description": "the another p-limit",
     "license": "MIT",
     "exports": {
