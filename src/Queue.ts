@@ -33,49 +33,54 @@ export function Queue<T>(): Queue<T> {
         value: T;
         next: Node | undefined;
     }
-    // terminal.nextはキューの先頭(headなどにしなかったのはnextで揃えることでenqueueで楽をするため)
-    type Terminal =
-        // nextとtailのどちらもが存在しているか
-        | { next: Node; tail: Node }
-        // どちらもが存在していないかの二択
-        | { next: undefined; tail: undefined };
+    interface Terminal {
+        head: Node;
+        tail: Node;
+    }
 
-    const terminal: Terminal = { next: undefined, tail: undefined };
+    let terminal: Terminal | undefined;
     let size = 0;
 
     function clear() {
-        terminal.next = undefined;
-        terminal.tail = undefined;
+        terminal = undefined;
         size = 0;
     }
 
     function enqueue(value: T) {
         const node: Node = { value, next: undefined };
-        // キューに存在していれば末尾の次に、空ならば先頭に追加
-        (terminal.next ? terminal.tail : terminal).next = node;
-        // 末尾のNodeを記憶しておく
-        terminal.tail = node;
+        if (terminal) {
+            // キューに存在していれば末尾の次に追加
+            terminal.tail = terminal.tail.next = node;
+        } else {
+            // 空だったらnode1つだけのキューにする
+            terminal = { head: node, tail: node };
+        }
         ++size;
     }
 
     function dequeue() {
-        if (!terminal.next) {
+        if (!terminal) {
             // キューが空ならundefinedを返す。
             return undefined;
         }
-        const { next, value } = terminal.next;
-        // 先頭を次のNodeに差し替え
-        (terminal as Terminal).next = next;
+        const { next, value } = terminal.head;
+        if (next) {
+            // 先頭を次のNodeに差し替え
+            terminal.head = next;
+        } else {
+            // 空になったのでクリア
+            terminal = undefined;
+        }
         --size;
         return value;
     }
 
     function peek() {
-        return terminal.next?.value;
+        return terminal?.head.value;
     }
 
     function* iterator() {
-        for (let node = terminal.next; node; node = node.next) {
+        for (let node = terminal?.head; node; node = node.next) {
             yield node.value;
         }
     }
