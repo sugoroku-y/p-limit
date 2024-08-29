@@ -50,7 +50,7 @@ describe('Queue', () => {
         // eslint-disable-next-line @typescript-eslint/unbound-method -- -
         expect(() => (0, queue.enqueue)(1)).toThrow();
     });
-    test.performance.each([100, 1000, 10000, 100000, 1000000])(
+    test.performance.concurrent.each([100, 1000, 10000, 100000, 1000000])(
         'performance %d',
         async (count) => {
             function sample(Queue: () => Queue<number>, count: number): number {

@@ -83,7 +83,7 @@ const table = {
 const npmInstall = ['npm', 'i', '../../..', 'ts-node', '--install-links'];
 
 describe('sample', () => {
-    test.performance.each(['esm', 'cjs'] as const)(
+    test.performance.concurrent.each(['esm', 'cjs'] as const)(
         'sample %s',
         async (dir) => {
             const { type, tsConfig, execCommand } = table[dir];
