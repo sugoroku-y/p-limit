@@ -48,4 +48,13 @@ export default {
         // コミット前のテストではキャッシュを使用しない
         cache: false,
     }),
+    // coverageが100%でなければエラーとする
+    coverageThreshold: {
+        global: {
+            branches: 100,
+            functions: 100,
+            lines: 100,
+            statements: 100,
+        },
+    },
 } satisfies Config;
