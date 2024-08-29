@@ -14,6 +14,7 @@ export default {
                 ],
             },
             collectCoverageFrom: ['src/**/*.ts'],
+            coveragePathIgnorePatterns: ['/tests/'],
             globals: {
                 collectCoverage: !!process.env['npm_config_coverage'],
                 preCommit: !!process.env['npm_config_pre_commit'],
