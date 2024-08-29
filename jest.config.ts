@@ -16,10 +16,13 @@ export default {
             collectCoverageFrom: ['src/**/*.ts'],
             coveragePathIgnorePatterns: ['/tests/'],
             globals: {
-                collectCoverage: !!process.env['npm_config_coverage'],
-                preCommit: !!process.env['npm_config_pre_commit'],
+                // test.performanceをスキップするかどうか
+                skipPerformance: !!process.env['npm_config_pre_commit'],
             },
-            setupFilesAfterEnv: ['./tests/setupFilesAfterEnv.ts'],
+            // coverage計測のときはtest.performanceをスキップする
+            globalSetup: './tests/globalSetup.ts',
+            // test.performanceのセットアップ
+            setupFilesAfterEnv: ['./tests/setupTestPerformance.ts'],
         },
         ...(process.env['npm_config_lint']
             ? // npm test --lintで実行すると以下も追加でテストする
@@ -35,7 +38,10 @@ export default {
               ]
             : []),
     ],
-    collectCoverage: !!process.env['npm_config_coverage'],
+    // npm test --coverageでもcoverage計測できるようにする
+    ...('npm_config_coverage' in process.env && {
+        collectCoverage: process.env['npm_config_coverage'] === 'true',
+    }),
     ...(process.env['npm_config_pre_commit'] && {
         // コミット前のテストではログを出力しない
         silent: true,

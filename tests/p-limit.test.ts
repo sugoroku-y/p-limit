@@ -214,7 +214,7 @@ describe('p-limit', () => {
     });
 
     describe('original test', () => {
-        test('concurrency: 1', async () => {
+        test.performance('concurrency: 1', async () => {
             const input = [
                 [10, 300],
                 [20, 200],

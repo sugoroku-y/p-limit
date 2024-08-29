@@ -122,6 +122,7 @@
             "error",
             {
                 "additionalTestBlockFunctions": [
+                    "test.performance",
                     "test.performance.concurrent",
                     "test.performance.concurrent.each"
                 ]
