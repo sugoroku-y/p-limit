@@ -17,7 +17,7 @@ export interface Queue<T> extends Iterable<T> {
      * Get the next value in the queue without removing it.
      * @returns The value or `undefined` if the queue is empty.
      */
-    peek(): T | undefined;
+    peek(this: void): T | undefined;
     /**
      * Clear the queue.
      */

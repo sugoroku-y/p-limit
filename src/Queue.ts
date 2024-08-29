@@ -17,7 +17,7 @@ export interface Queue<T> extends Iterable<T> {
      * Get the next value in the queue without removing it.
      * @returns The value or `undefined` if the queue is empty.
      */
-    peek(): T | undefined;
+    peek(this: void): T | undefined;
     /**
      * Clear the queue.
      */
@@ -47,7 +47,7 @@ export function Queue<T>(): Queue<T> {
     }
 
     function enqueue(value: T) {
-        const node: Node = { value, next: undefined };
+        const node = { value, next: undefined };
         if (terminal) {
             // キューに存在していれば末尾の次に追加
             terminal.tail = terminal.tail.next = node;
