@@ -1,18 +1,33 @@
+import { spawn } from 'child_process';
 import { Queue } from '../src/Queue';
 import wrappedImport from './wrappedImport';
+import Queue1 from './performance/Queue1';
+import Queue2 from './performance/Queue2';
+import Queue3 from './performance/Queue3';
+import Queue4 from './performance/Queue4';
+import Queue5 from './performance/Queue5';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- ts-jestで実行時にはエラーにならないので@ts-ignoreを使う
 // @ts-ignore 型としてのimportなのでCommonJSかESModuleかは関係ない
 const YoctoQueue = wrappedImport<typeof import('yocto-queue')>('yocto-queue');
 
 describe('Queue', () => {
+    let YoctoQueueClass: Awaited<typeof YoctoQueue>['default'];
+    const yoctoQ = <T>() => new YoctoQueueClass<T>();
+    beforeAll(async () => {
+        ({ default: YoctoQueueClass } = await YoctoQueue);
+    });
     test.each([
-        ['yocto-queue', YoctoQueue],
-        ['mime', Promise.resolve({ default: Queue })],
-    ])('compatible %s', async (_, m) => {
-        const { default: Queue } = await m;
+        ['yocto-queue', yoctoQ],
+        ['mime', Queue],
+        ['Queue1', Queue1],
+        ['Queue2', Queue2],
+        ['Queue3', Queue3],
+        ['Queue4', Queue4],
+        ['Queue5', Queue5],
+    ])('compatible %s', (_, Queue) => {
         const log: unknown[] = [];
-        const queue = new (Queue as new () => Queue<number>)();
+        const queue = Queue<number>();
         queue.enqueue(1);
         queue.enqueue(2);
         queue.enqueue(3);
@@ -44,66 +59,49 @@ describe('Queue', () => {
         (0, queue.enqueue)(1);
         expect(queue.dequeue()).toBe(1);
     });
-    test('method yocto-queue', async () => {
-        const { default: Queue } = await YoctoQueue;
-        const queue = new Queue<number>();
+    test('method yocto-queue', () => {
+        const queue = yoctoQ<number>();
         // eslint-disable-next-line @typescript-eslint/unbound-method -- -
         expect(() => (0, queue.enqueue)(1)).toThrow();
     });
     test.performance.concurrent.each([100, 1000, 10000, 100000, 1000000])(
         'performance %d',
         async (count) => {
-            function sample(Queue: () => Queue<number>, count: number): number {
-                const queue = Queue();
-                const start = performance.now();
-                for (let c = count; c; --c) {
-                    queue.enqueue(c);
-                }
-                while (queue.dequeue());
-                return performance.now() - start;
-            }
-            function avarage(...numbers: number[]): number {
-                return numbers.reduce((a, b) => a + b) / numbers.length;
-            }
-            const mine = Queue;
-            const yQueue = (await YoctoQueue).default;
-            const yocto = () => new yQueue<number>();
             // 交互に実行して最大値と最小値を除いた平均を取って比較
-            const results = [
-                ['m', sample(mine, count)],
-                ['y', sample(yocto, count)],
-                ['m', sample(mine, count)],
-                ['y', sample(yocto, count)],
-                ['m', sample(mine, count)],
-                ['y', sample(yocto, count)],
-                ['m', sample(mine, count)],
-                ['y', sample(yocto, count)],
-                ['m', sample(mine, count)],
-                ['y', sample(yocto, count)],
-                ['m', sample(mine, count)],
-                ['y', sample(yocto, count)],
+            const Queues = [
+                'Queue',
+                'yoctoQ',
+                'Queue1',
+                'Queue2',
+                'Queue3',
+                'Queue4',
+                'Queue5',
             ] as const;
-            const mResults = results
-                .filter(([n]) => n === 'm')
-                .map(([, v]) => v);
-            const mResultMax = Math.max(...mResults);
-            const mResultMin = Math.min(...mResults);
-            const yResults = results
-                .filter(([n]) => n === 'y')
-                .map(([, v]) => v);
-            const yResultMax = Math.max(...yResults);
-            const yResultMin = Math.min(...yResults);
-            const mResult = avarage(
-                ...mResults.filter((e) => e !== mResultMax && e !== mResultMin),
-            );
-            const yResult = avarage(
-                ...yResults.filter((e) => e !== yResultMax && e !== yResultMin),
-            );
+            const results: Partial<Record<(typeof Queues)[number], number[]>> =
+                {};
+            for (let repeat = 100; repeat-- > 0; ) {
+                await Promise.all(
+                    Queues.map(async (n) => {
+                        (results[n] ??= []).push(await sample(n, count));
+                    }),
+                );
+            }
+            const mResult = trimMean(...(results.Queue ?? [0]));
+            const yResult = trimMean(...(results.yoctoQ ?? [0]));
+            const q1Result = trimMean(...(results.Queue1 ?? [0]));
+            const q2Result = trimMean(...(results.Queue2 ?? [0]));
+            const q3Result = trimMean(...(results.Queue3 ?? [0]));
+            const q4Result = trimMean(...(results.Queue4 ?? [0]));
+            const q5Result = trimMean(...(results.Queue5 ?? [0]));
             console.log(
                 `count: ${count}
-                mResult: ${mResult}
-                yResult: ${yResult}
-                mResult / yResult: ${mResult / yResult}
+                 Queue: ${mResult.toFixed(5).padStart(9)}
+                 yocto: ${yResult.toFixed(5).padStart(9)}(${((yResult / mResult) * 100).toFixed(3)}%)
+                Queue1: ${q1Result.toFixed(5).padStart(9)}(${((q1Result / mResult) * 100).toFixed(3)}%)
+                Queue2: ${q2Result.toFixed(5).padStart(9)}(${((q2Result / mResult) * 100).toFixed(3)}%)
+                Queue3: ${q3Result.toFixed(5).padStart(9)}(${((q3Result / mResult) * 100).toFixed(3)}%)
+                Queue4: ${q4Result.toFixed(5).padStart(9)}(${((q4Result / mResult) * 100).toFixed(3)}%)
+                Queue5: ${q5Result.toFixed(5).padStart(9)}(${((q5Result / mResult) * 100).toFixed(3)}%)
                 `.replaceAll(
                     `
                 `,
@@ -116,3 +114,28 @@ describe('Queue', () => {
         60000,
     );
 });
+
+function sample(moduleName: string, count: number): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+        const exec = spawn('node', [
+            'tests/performance/measure.js',
+            moduleName,
+            String(count),
+        ]);
+        let code = '';
+        exec.stdout.on('data', (chunk) => (code += String(chunk)));
+        exec.on('exit', () => resolve(Number(code))).on('error', (err) =>
+            reject(err),
+        );
+    });
+}
+
+function avarage(...numbers: number[]): number {
+    return numbers.reduce((a, b) => a + b) / numbers.length;
+}
+
+function trimMean(...numbers: number[]): number {
+    const max = Math.max(...numbers);
+    const min = Math.min(...numbers);
+    return avarage(...numbers.filter((e) => e !== max && e !== min));
+}
