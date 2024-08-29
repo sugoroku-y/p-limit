@@ -65,8 +65,6 @@ describe('Queue', () => {
             function avarage(...numbers: number[]): number {
                 return numbers.reduce((a, b) => a + b) / numbers.length;
             }
-            const mock = jest.fn();
-            mock();
             const mine = Queue;
             const yQueue = (await YoctoQueue).default;
             const yocto = () => new yQueue<number>();
