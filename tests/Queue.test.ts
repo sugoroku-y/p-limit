@@ -64,7 +64,7 @@ describe('Queue', () => {
         // eslint-disable-next-line @typescript-eslint/unbound-method -- -
         expect(() => (0, queue.enqueue)(1)).toThrow();
     });
-    test.performance.concurrent.each([100, 1000, 10000, 100000, 1000000])(
+    test.performance.each([100, 1000, 10000, 100000, 1000000])(
         'performance %d',
         async (count) => {
             // 交互に実行して最大値と最小値を除いた平均を取って比較
@@ -77,39 +77,33 @@ describe('Queue', () => {
                 'Queue4',
                 'Queue5',
             ] as const;
-            const results: Partial<Record<(typeof Queues)[number], number[]>> =
-                {};
-            for (let repeat = 100; repeat-- > 0; ) {
-                await Promise.all(
-                    Queues.map(async (n) => {
-                        (results[n] ??= []).push(await sample(n, count));
-                    }),
-                );
+            const results = Object.fromEntries<number[]>(
+                Queues.map((n) => [n, []]),
+            );
+            const start = performance.now();
+            LOOP: for (let repeat = 100; repeat-- > 0; ) {
+                for (const n of Queues) {
+                    results[n].push(await sample(n, count));
+                    if (performance.now() - start > 59000) {
+                        break LOOP;
+                    }
+                }
             }
-            const mResult = trimMean(...(results.Queue ?? [0]));
-            const yResult = trimMean(...(results.yoctoQ ?? [0]));
-            const q1Result = trimMean(...(results.Queue1 ?? [0]));
-            const q2Result = trimMean(...(results.Queue2 ?? [0]));
-            const q3Result = trimMean(...(results.Queue3 ?? [0]));
-            const q4Result = trimMean(...(results.Queue4 ?? [0]));
-            const q5Result = trimMean(...(results.Queue5 ?? [0]));
+            const { Queue: mResult, ...others } = Object.fromEntries(
+                Queues.map((n) => [n, trimMean(...results[n])]),
+            );
             console.log(
-                `count: ${count}
-                 Queue: ${mResult.toFixed(5).padStart(9)}
-                 yocto: ${yResult.toFixed(5).padStart(9)}(${((yResult / mResult) * 100).toFixed(3)}%)
-                Queue1: ${q1Result.toFixed(5).padStart(9)}(${((q1Result / mResult) * 100).toFixed(3)}%)
-                Queue2: ${q2Result.toFixed(5).padStart(9)}(${((q2Result / mResult) * 100).toFixed(3)}%)
-                Queue3: ${q3Result.toFixed(5).padStart(9)}(${((q3Result / mResult) * 100).toFixed(3)}%)
-                Queue4: ${q4Result.toFixed(5).padStart(9)}(${((q4Result / mResult) * 100).toFixed(3)}%)
-                Queue5: ${q5Result.toFixed(5).padStart(9)}(${((q5Result / mResult) * 100).toFixed(3)}%)
-                `.replaceAll(
-                    `
-                `,
-                    '\n',
-                ),
+                `count: ${count}\n Queue: ${mResult.toFixed(5).padStart(9)}\n${Object.entries(
+                    others,
+                )
+                    .map(
+                        ([n, v]) =>
+                            `${n}: ${v.toFixed(5).padStart(9)}(${((v / mResult) * 100).toFixed(3)}%)`,
+                    )
+                    .join('\n')}`,
             );
             // 1.5倍までは許容
-            expect(mResult).toBeLessThan(yResult * 1.5);
+            expect(mResult).toBeLessThan(others['yoctoQ'] * 1.5);
         },
         60000,
     );
@@ -122,11 +116,30 @@ function sample(moduleName: string, count: number): Promise<number> {
             moduleName,
             String(count),
         ]);
-        let code = '';
-        exec.stdout.on('data', (chunk) => (code += String(chunk)));
-        exec.on('exit', () => resolve(Number(code))).on('error', (err) =>
-            reject(err),
+        let buffer = '';
+        exec.stdout.on('data', (chunk) => (buffer += String(chunk)));
+        exec.stderr.on('data', (chunk) =>
+            console.error(
+                String(chunk).replace(/^(?=.)/gm, `${moduleName}:${count}: `),
+            ),
         );
+        exec.on('exit', (code, signal) => {
+            if (signal) {
+                reject(new Error(`signal received: ${signal}`));
+                return;
+            }
+            if (code !== 0) {
+                reject(new Error(`invalid status code: ${code}`));
+                return;
+            }
+            // eslint-disable-next-line no-control-regex -- エスケープシーケンスに対応
+            const elapsed = buffer.match(/(?<!\x1b\[\d*)\d+(?:\.\d+)?/)?.[0];
+            if (!elapsed) {
+                reject(new Error(`invalid output: ${buffer}`));
+                return;
+            }
+            resolve(Number(elapsed));
+        }).on('error', reject);
     });
 }
 
@@ -137,5 +150,10 @@ function avarage(...numbers: number[]): number {
 function trimMean(...numbers: number[]): number {
     const max = Math.max(...numbers);
     const min = Math.min(...numbers);
-    return avarage(...numbers.filter((e) => e !== max && e !== min));
+    const trimmed = numbers.filter((e) => e !== max && e !== min);
+    if (trimmed.length === 0) {
+        console.log(numbers);
+        return avarage(...numbers);
+    }
+    return avarage(...trimmed);
 }
