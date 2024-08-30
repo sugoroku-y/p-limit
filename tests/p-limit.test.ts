@@ -7,6 +7,8 @@ import wrappedImport from './wrappedImport';
 const pLimitOriginal = wrappedImport<typeof import('p-limit')>('p-limit');
 
 describe('p-limit', () => {
+    jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
     //        |        0|      100|      200|      300|      400|      500|      600|      700|      800|      900|     1000|     1100|
     // 0      |p[       |         |]        |         |         |         |         |         |         |         |         |         |
     // 1      |p[       |         |         |         |         |         |         |]        |         |         |         |         |

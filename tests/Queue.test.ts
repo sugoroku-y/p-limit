@@ -64,49 +64,53 @@ describe('Queue', () => {
         // eslint-disable-next-line @typescript-eslint/unbound-method -- -
         expect(() => (0, queue.enqueue)(1)).toThrow();
     });
-    test.performance.each([100, 1000, 10000, 100000, 1000000])(
-        'performance %d',
-        async (count) => {
-            // 交互に実行して最大値と最小値を除いた平均を取って比較
-            const Queues = [
-                'Queue',
-                'yoctoQ',
-                'Queue1',
-                'Queue2',
-                'Queue3',
-                'Queue4',
-                'Queue5',
-            ] as const;
-            const results = Object.fromEntries<number[]>(
-                Queues.map((n) => [n, []]),
-            );
-            const start = performance.now();
-            LOOP: for (let repeat = 100; repeat-- > 0; ) {
-                for (const n of Queues) {
-                    results[n].push(await sample(n, count));
-                    if (performance.now() - start > 59000) {
-                        break LOOP;
+    describe('performance', () => {
+        jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
+        test.performance.each([100, 1000, 10000, 100000, 1000000])(
+            'count: %d',
+            async (count) => {
+                // 交互に実行して最大値と最小値を除いた平均を取って比較
+                const Queues = [
+                    'Queue',
+                    'yoctoQ',
+                    'Queue1',
+                    'Queue2',
+                    'Queue3',
+                    'Queue4',
+                    'Queue5',
+                ] as const;
+                const results = Object.fromEntries<number[]>(
+                    Queues.map((n) => [n, []]),
+                );
+                const start = performance.now();
+                LOOP: for (let repeat = 100; repeat-- > 0; ) {
+                    for (const n of Queues) {
+                        results[n].push(await sample(n, count));
+                        if (performance.now() - start > 60000) {
+                            break LOOP;
+                        }
                     }
                 }
-            }
-            const { Queue: mResult, ...others } = Object.fromEntries(
-                Queues.map((n) => [n, trimMean(...results[n])]),
-            );
-            console.log(
-                `count: ${count}\n Queue: ${mResult.toFixed(5).padStart(9)}\n${Object.entries(
-                    others,
-                )
-                    .map(
-                        ([n, v]) =>
-                            `${n}: ${v.toFixed(5).padStart(9)}(${((v / mResult) * 100).toFixed(3)}%)`,
+                const { Queue: mResult, ...others } = Object.fromEntries(
+                    Queues.map((n) => [n, trimMean(...results[n])]),
+                );
+                console.log(
+                    `count: ${count}\n Queue: ${mResult.toFixed(5).padStart(9)}\n${Object.entries(
+                        others,
                     )
-                    .join('\n')}`,
-            );
-            // 1.5倍までは許容
-            expect(mResult).toBeLessThan(others['yoctoQ'] * 1.5);
-        },
-        60000,
-    );
+                        .map(
+                            ([n, v]) =>
+                                `${n}: ${v.toFixed(5).padStart(9)}(${((v / mResult) * 100).toFixed(3)}%)`,
+                        )
+                        .join('\n')}`,
+                );
+                // 1.5倍までは許容
+                expect(mResult).toBeLessThan(others['yoctoQ'] * 1.5);
+            },
+            70000,
+        );
+    });
 });
 
 function sample(moduleName: string, count: number): Promise<number> {

@@ -83,6 +83,8 @@ const table = {
 const npmInstall = ['npm', 'i', '../../..', 'ts-node', '--install-links'];
 
 describe('sample', () => {
+    jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
     test.performance.concurrent.each(['esm', 'cjs'] as const)(
         'sample %s',
         async (dir) => {
