@@ -29,70 +29,48 @@ export interface Queue<T> extends Iterable<T> {
  * @returns The instance of the light weight queue.
  */
 export function Queue<T>(): Queue<T> {
-    interface Node {
-        value: T;
-        next: Node | undefined;
-    }
-    interface Terminal {
-        head: Node;
-        tail: Node;
-    }
-
-    let terminal: Terminal | undefined;
-    let size = 0;
-
-    function clear() {
-        terminal = undefined;
-        size = 0;
-    }
-
+    let array: T[] = [];
+    let head = 0;
+    let tail = 0;
     function enqueue(value: T) {
-        const node = { value, next: undefined };
-        if (terminal) {
-            // キューに存在していれば末尾の次に追加
-            terminal.tail = terminal.tail.next = node;
-        } else {
-            // 空だったらnode1つだけのキューにする
-            terminal = { head: node, tail: node };
+        array[tail++] = value;
+        if (tail === Number.MAX_SAFE_INTEGER) {
+            array = array.slice(head);
+            tail -= head;
+            head = 0;
         }
-        ++size;
     }
-
     function dequeue() {
-        if (!terminal) {
-            // キューが空ならundefinedを返す。
+        if (head >= tail) {
             return undefined;
         }
-        const { next, value } = terminal.head;
-        if (next) {
-            // 先頭を次のNodeに差し替え
-            terminal.head = next;
-        } else {
-            // 空になったのでクリア
-            terminal = undefined;
+        const value = array[head];
+        // 参照を切るためにundefinedを代入
+        array[head++] = undefined as T;
+        if (head >= tail) {
+            head = tail = 0;
         }
-        --size;
         return value;
     }
-
     function peek() {
-        return terminal?.head.value;
+        return head < tail ? array[head] : undefined;
     }
-
+    function clear() {
+        array.length = head = tail = 0;
+    }
     function* iterator() {
-        for (let node = terminal?.head; node; node = node.next) {
-            yield node.value;
+        for (let i = head; i < tail; ++i) {
+            yield array[i];
         }
     }
-
     return {
-        get size(): number {
-            return size;
+        get size() {
+            return tail - head;
         },
+        [Symbol.iterator]: iterator,
         enqueue,
         dequeue,
         peek,
         clear,
-        [Symbol.iterator]: iterator,
     };
 }

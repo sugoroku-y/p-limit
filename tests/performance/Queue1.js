@@ -9,42 +9,45 @@ module.exports = function Queue1() {
     let array = [];
     let head = 0;
     let tail = 0;
+    function enqueue(value) {
+        array[tail++] = value;
+        if (tail === Number.MAX_SAFE_INTEGER) {
+            array = array.slice(head);
+            tail -= head;
+            head = 0;
+        }
+    }
+    function dequeue() {
+        if (head >= tail) {
+            return undefined;
+        }
+        const value = array[head];
+        // 参照を切るためにundefinedを代入
+        array[head++] = undefined;
+        if (head >= tail) {
+            head = tail = 0;
+        }
+        return value;
+    }
+    function peek() {
+        return head < tail ? array[head] : undefined;
+    }
+    function clear() {
+        array.length = head = tail = 0;
+    }
+    function* iterator() {
+        for (let i = head; i < tail; ++i) {
+            yield array[i];
+        }
+    }
     return {
         get size() {
             return tail - head;
         },
-        // eslint-disable-next-line jsdoc/require-param-description -- -
-        /** @param value */
-        enqueue(value) {
-            array[tail++] = value;
-            if (tail === Number.MAX_SAFE_INTEGER) {
-                array = array.slice(head);
-                tail -= head;
-                head = 0;
-            }
-        },
-        dequeue() {
-            if (head >= tail) {
-                return undefined;
-            }
-            const value = array[head];
-            // 参照を切るためにundefinedを代入
-            array[head++] = undefined;
-            if (head === tail) {
-                head = tail = 0;
-            }
-            return value;
-        },
-        peek() {
-            return head < tail ? array[head] : undefined;
-        },
-        clear() {
-            array.length = head = tail = 0;
-        },
-        *[Symbol.iterator]() {
-            for (let i = head; i < tail; ++i) {
-                yield array[i];
-            }
-        },
+        [Symbol.iterator]: iterator,
+        enqueue,
+        dequeue,
+        peek,
+        clear,
     };
 };
