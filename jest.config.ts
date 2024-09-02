@@ -14,7 +14,7 @@ export default {
                 ],
             },
             collectCoverageFrom: ['src/**/*.ts'],
-            coveragePathIgnorePatterns: ['/tests/'],
+            coveragePathIgnorePatterns: ['/tests/', '/lib/'],
             globals: {
                 // test.performanceをスキップするかどうか
                 skipPerformance: !!process.env['npm_config_pre_commit'],

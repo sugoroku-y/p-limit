@@ -66,6 +66,23 @@ describe('Queue', () => {
         // eslint-disable-next-line @typescript-eslint/unbound-method -- -
         expect(() => (0, queue.enqueue)(1)).toThrow();
     });
+    test('mass', () => {
+        const queue = Queue<number>();
+        queue.enqueue(0);
+        for (let i = 1; i <= Queue.MAX_COUNT; ++i) {
+            queue.enqueue(i);
+            queue.dequeue();
+        }
+        expect(queue.size).toBe(1);
+        for (let i = 1; i <= 3; ++i) {
+            queue.enqueue(i);
+        }
+        expect([...queue]).toEqual([Queue.MAX_COUNT, 1, 2, 3]);
+        while (queue.peek() !== undefined) {
+            queue.dequeue();
+        }
+        expect(queue.size).toBe(0);
+    });
     describe('performance', () => {
         jest.retryTimes(3, { logErrorsBeforeRetry: true });
 

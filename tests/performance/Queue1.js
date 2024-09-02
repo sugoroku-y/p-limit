@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires -- jsファイルではrequireでよい
+const Queue = require('../../lib/Queue');
+
 /**
  * 配列を使用したキュー
  *
@@ -11,7 +14,7 @@ module.exports = function Queue1() {
     let tail = 0;
     function enqueue(value) {
         array[tail++] = value;
-        if (tail === Number.MAX_SAFE_INTEGER) {
+        if (tail === Queue.MAX_COUNT) {
             array = array.slice(head);
             tail -= head;
             head = 0;

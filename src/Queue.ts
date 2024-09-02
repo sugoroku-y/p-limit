@@ -1,4 +1,4 @@
-export interface Queue<T> extends Iterable<T> {
+interface Queue<T> extends Iterable<T> {
     /**
      * The size of the queue.
      */
@@ -28,13 +28,13 @@ export interface Queue<T> extends Iterable<T> {
  * The light weight queue.
  * @returns The instance of the light weight queue.
  */
-export function Queue<T>(): Queue<T> {
+function Queue<T>(): Queue<T> {
     let array: T[] = [];
     let head = 0;
     let tail = 0;
     function enqueue(value: T) {
         array[tail++] = value;
-        if (tail === Number.MAX_SAFE_INTEGER) {
+        if (tail === Queue.MAX_COUNT) {
             array = array.slice(head);
             tail -= head;
             head = 0;
@@ -74,3 +74,7 @@ export function Queue<T>(): Queue<T> {
         clear,
     };
 }
+
+Queue.MAX_COUNT = 0x4000000 as const;
+
+export { Queue };

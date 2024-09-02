@@ -1,4 +1,4 @@
-export interface Queue<T> extends Iterable<T> {
+interface Queue<T> extends Iterable<T> {
     /**
      * The size of the queue.
      */
@@ -27,4 +27,8 @@ export interface Queue<T> extends Iterable<T> {
  * The light weight queue.
  * @returns The instance of the light weight queue.
  */
-export declare function Queue<T>(): Queue<T>;
+declare function Queue<T>(): Queue<T>;
+declare namespace Queue {
+    var MAX_COUNT: 67108864;
+}
+export { Queue };
