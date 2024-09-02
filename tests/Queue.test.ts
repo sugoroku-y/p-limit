@@ -6,6 +6,7 @@ import Queue2 from './performance/Queue2';
 import Queue3 from './performance/Queue3';
 import Queue4 from './performance/Queue4';
 import Queue5 from './performance/Queue5';
+import Queue6 from './performance/Queue6';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- ts-jestで実行時にはエラーにならないので@ts-ignoreを使う
 // @ts-ignore 型としてのimportなのでCommonJSかESModuleかは関係ない
@@ -25,6 +26,7 @@ describe('Queue', () => {
         ['Queue3', Queue3],
         ['Queue4', Queue4],
         ['Queue5', Queue5],
+        ['Queue6', Queue6],
     ])('compatible %s', (_, Queue) => {
         const log: unknown[] = [];
         const queue = Queue<number>();
@@ -79,6 +81,7 @@ describe('Queue', () => {
                     'Queue3',
                     'Queue4',
                     'Queue5',
+                    'Queue6',
                 ] as const;
                 const results = Object.fromEntries<number[]>(
                     Queues.map((n) => [n, []]),
