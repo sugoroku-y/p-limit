@@ -88,7 +88,14 @@ describe('Queue', () => {
                 );
                 const start = performance.now();
                 LOOP: for (let repeat = 100; repeat-- > 0; ) {
-                    for (const n of Queues) {
+                    const order = Queues.slice();
+                    order.forEach((_, i) => {
+                        const j = Math.floor(Math.random() * order.length);
+                        if (i !== j) {
+                            [order[i], order[j]] = [order[j], order[i]];
+                        }
+                    });
+                    for (const n of order) {
                         results[n].push(await sample(n, count));
                         if (performance.now() - start > 60000) {
                             break LOOP;
