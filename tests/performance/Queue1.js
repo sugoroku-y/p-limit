@@ -11,54 +11,58 @@ module.exports = function Queue1() {
     /** @type {T[]} */
     let array = [];
     let head = 0;
-    let tail = 0;
 
     /**
      * キューに値を追加する。
      * @param {T} value 追加する値
      */
     function enqueue(value) {
-        array[tail++] = value;
-        if (tail === Queue.MAX_COUNT) {
+        if (array.length >= Queue.MAX_COUNT) {
+            if (head === 0) {
+                throw new Error(
+                    `The maximum of the queue exceeded: ${Queue.MAX_COUNT}`,
+                );
+            }
             array = array.slice(head);
-            tail -= head;
             head = 0;
         }
+        array.push(value);
     }
 
     function dequeue() {
-        if (head >= tail) {
+        if (head >= array.length) {
             // キューが空ならundefinedを返す。
             return undefined;
         }
         const value = array[head];
         // 参照を切るためにundefinedを代入
-        array[head++] = undefined;
+        array[head] = undefined;
 
-        if (head >= tail) {
+        if (++head >= array.length) {
             // 空になったのでクリア
-            head = tail = 0;
+            clear();
         }
         return value;
     }
 
     function peek() {
-        return head < tail ? array[head] : undefined;
+        return array[head];
     }
 
     function clear() {
-        array.length = head = tail = 0;
+        array = [];
+        head = 0;
     }
 
     function* iterator() {
-        for (let i = head; i < tail; ++i) {
+        for (let i = head; i < array.length; ++i) {
             yield array[i];
         }
     }
 
     return {
         get size() {
-            return tail - head;
+            return array.length - head;
         },
         [Symbol.iterator]: iterator,
         enqueue,
