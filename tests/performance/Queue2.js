@@ -1,20 +1,24 @@
+/** @template T */
 class Node {
-    /** @type {unknown} */
+    /** @type {T} */
     value;
-    /** @type {Node} */
+    /** @type {Node<T>} */
     next;
+    /** @param {T} value Nodeが保持する値 */
     constructor(value) {
         this.value = value;
     }
 }
 
+/** @template T */
 class QueueImpl {
-    /** @type {Node | undefined} */
+    /** @type {Node<T> | undefined} */
     #head;
-    /** @type {Node | undefined} */
+    /** @type {Node<T> | undefined} */
     #tail;
     #size = 0;
 
+    /** @param {T} value 追加する値 */
     enqueue(value) {
         const node = new Node(value);
 

@@ -11,8 +11,10 @@ module.exports = function Queue4() {
     let tail;
     let size = 0;
 
-    // eslint-disable-next-line jsdoc/require-description, jsdoc/no-types, jsdoc/require-param-description -- -
-    /** @param {unknown} value */
+    /**
+     *  キューに値を追加する。
+     * @param {unknown} value 追加する値
+     */
     function enqueue(value) {
         const node = { value, next: undefined };
 

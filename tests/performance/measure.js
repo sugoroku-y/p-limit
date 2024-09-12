@@ -1,11 +1,9 @@
-// eslint-disable-next-line jsdoc/valid-types -- -
-/** @type {'yoctoQ' | 'Queue' | `Queue${1|2|3|4|5}`} */
+/** @type {'yoctoQ' | 'Queue' | 'Queue1' | 'Queue2' | 'Queue3' | 'Queue4' | 'Queue5'} */
 const moduleName = process.argv[2];
 const count = Number(process.argv[3]);
 
 (async () => {
     /** @type {() => import('../../src/Queue').Queue} */
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- -
     const Queue =
         moduleName === 'yoctoQ'
             ? await (async () => {
@@ -13,8 +11,7 @@ const count = Number(process.argv[3]);
                   return () => new Queue();
               })()
             : moduleName === 'Queue'
-              ? // eslint-disable-next-line @typescript-eslint/no-var-requires -- -
-                require('../../lib/Queue').Queue
+              ? require('../../lib/Queue').Queue
               : require(`./${moduleName}`);
     const queue = Queue();
     const start = performance.now();
