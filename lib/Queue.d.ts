@@ -22,13 +22,15 @@ interface Queue<T> extends Iterable<T> {
      * Clear the queue.
      */
     clear(this: void): void;
+    /**
+     * Maximum size of the array blocks used in the queue
+     */
+    blockSize: number;
 }
 /**
  * The light weight queue.
+ * @param blockSizeSpec キューで使用する配列の最大サイズ
  * @returns The instance of the light weight queue.
  */
-declare function Queue<T>(): Queue<T>;
-declare namespace Queue {
-    var MAX_COUNT: 1048576;
-}
+declare function Queue<T>(blockSizeSpec?: number): Queue<T>;
 export { Queue };

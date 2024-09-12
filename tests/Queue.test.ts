@@ -71,7 +71,7 @@ describe('Queue', () => {
     test('mass', () => {
         const queue = Queue<number>();
         queue.enqueue(0);
-        for (let i = 1; i <= Queue.MAX_COUNT; ++i) {
+        for (let i = 1; i <= queue.blockSize; ++i) {
             queue.enqueue(i);
             queue.dequeue();
         }
@@ -79,15 +79,15 @@ describe('Queue', () => {
         for (let i = 1; i <= 3; ++i) {
             queue.enqueue(i);
         }
-        expect([...queue]).toEqual([Queue.MAX_COUNT, 1, 2, 3]);
+        expect([...queue]).toEqual([queue.blockSize, 1, 2, 3]);
         while (queue.peek() !== undefined) {
             queue.dequeue();
         }
         expect(queue.size).toBe(0);
-        for (let i = 0; i <= Queue.MAX_COUNT; ++i) {
+        for (let i = 0; i <= queue.blockSize; ++i) {
             queue.enqueue(i);
         }
-        expect(queue.size).toBe(Queue.MAX_COUNT + 1);
+        expect(queue.size).toBe(queue.blockSize + 1);
         expect([...queue].every((e, i) => e === i)).toBe(true);
     });
     test.performance(
@@ -170,6 +170,24 @@ describe('Queue', () => {
             },
             30000,
         );
+    });
+    test('blockSize', () => {
+        const queue = Queue<number>(5);
+        expect(queue.blockSize).toBe(5);
+        queue.enqueue(1);
+        queue.enqueue(2);
+        queue.enqueue(3);
+        queue.enqueue(4);
+        queue.enqueue(5);
+        queue.enqueue(6);
+        expect(queue.size).toBe(6);
+        queue.blockSize = 3;
+        expect(queue.blockSize).toBe(3);
+        queue.enqueue(7);
+        queue.enqueue(8);
+        queue.enqueue(9);
+        expect(queue.size).toBe(9);
+        expect([...queue]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     });
 });
 

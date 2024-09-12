@@ -1,5 +1,3 @@
-const Queue = require('../../lib/Queue');
-
 /**
  * 配列を使用したキュー
  *
@@ -17,12 +15,7 @@ module.exports = function Queue1() {
      * @param {T} value 追加する値
      */
     function enqueue(value) {
-        if (array.length >= Queue.MAX_COUNT) {
-            if (head === 0) {
-                throw new Error(
-                    `The maximum of the queue exceeded: ${Queue.MAX_COUNT}`,
-                );
-            }
+        if (array.length >= BLOCK_MAX_COUNT && head > 0) {
             array = array.slice(head);
             head = 0;
         }
@@ -71,3 +64,5 @@ module.exports = function Queue1() {
         clear,
     };
 };
+
+const BLOCK_MAX_COUNT = 0x100000;

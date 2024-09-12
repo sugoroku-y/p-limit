@@ -22,44 +22,69 @@ interface Queue<T> extends Iterable<T> {
      * Clear the queue.
      */
     clear(this: void): void;
+    /**
+     * Maximum size of the array blocks used in the queue
+     */
+    blockSize: number;
 }
 
 /**
  * The light weight queue.
+ * @param blockSizeSpec キューで使用する配列の最大サイズ
  * @returns The instance of the light weight queue.
  */
-function Queue<T>(): Queue<T> {
+function Queue<T>(blockSizeSpec?: number): Queue<T> {
     interface Node extends Array<T> {
-        next?: Node | undefined;
+        next?: Node;
     }
     let head: Node;
     let headIndex: number;
     let tail: Node;
+    let blockSize = blockSizeSpec ?? BLOCK_MAX_COUNT;
+
+    // 初期化
     clear();
+    return {
+        get size() {
+            return getSize();
+        },
+        get blockSize() {
+            return blockSize;
+        },
+        set blockSize(v) {
+            blockSize = v;
+        },
+        [Symbol.iterator]: iterator,
+        enqueue,
+        dequeue,
+        peek,
+        clear,
+    };
 
     function enqueue(value: T) {
-        if (tail.length >= Queue.MAX_COUNT) {
+        if (tail.length >= blockSize) {
             tail = tail.next = [];
         }
         tail.push(value);
     }
 
     function dequeue() {
-        if (headIndex >= head.length) {
-            // キューが空ならundefinedを返す。
+        if (head.length === 0) {
+            // キューが空ならundefinedを返します。
             return undefined;
         }
         const value = head[headIndex];
-        // 参照を切るためにundefinedを代入
+        // 参照を切るためにundefinedを代入します
         head[headIndex] = undefined as T;
 
         if (++headIndex >= head.length) {
+            // headIndexがheadの終端に到達したら
             if (head.next) {
-                // 先頭を次のNodeに差し替え
+                // 次があれば先頭を差し替えます
                 head = head.next;
                 headIndex = 0;
             } else {
-                // 空になったのでクリア
+                // 次がなければ空になったのでクリアします
                 clear();
             }
         }
@@ -67,6 +92,7 @@ function Queue<T>(): Queue<T> {
     }
 
     function peek() {
+        // キューが空の場合はheadも空なのでundefinedを返します
         return head[headIndex];
     }
 
@@ -76,30 +102,26 @@ function Queue<T>(): Queue<T> {
     }
 
     function* iterator() {
+        // headではheadIndexから要素ごとにyieldを使います
         for (let i = headIndex; i < head.length; ++i) {
             yield head[i];
         }
+        // next以降は配列全体なのでyield*を使います
         for (let node = head.next; node; node = node.next) {
             yield* node;
         }
     }
 
-    return {
-        get size() {
-            let size = head.length - headIndex;
-            for (let node = head.next; node; node = node.next) {
-                size += node.length;
-            }
-            return size;
-        },
-        [Symbol.iterator]: iterator,
-        enqueue,
-        dequeue,
-        peek,
-        clear,
-    };
+    function getSize() {
+        // sizeは滅多に使用しない、またnextが存在することもまれという想定のため、毎回計算します
+        let size = head.length - headIndex;
+        for (let node = head.next; node; node = node.next) {
+            size += node.length;
+        }
+        return size;
+    }
 }
 
-Queue.MAX_COUNT = 0x100000 as const;
+const BLOCK_MAX_COUNT = 0x100000;
 
 export { Queue };
