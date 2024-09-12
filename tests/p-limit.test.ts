@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import pLimit, { type LimitFunction } from '../src';
 import wrappedImport from './wrappedImport';
+import { measureLimit } from './measureLimit';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- ts-jestで実行時にはエラーにならないので@ts-ignoreを使う
 // @ts-ignore 型としてのimportなのでCommonJSかESModuleかは関係ない
@@ -565,6 +566,32 @@ describe('p-limit', () => {
             ).resolves.toEqual({ then: 1 });
         });
     });
+    test.performance(
+        'limit',
+        async () => {
+            const [original, mine] = await Promise.all([
+                measureLimit(/* js */ `
+                    const { default: pLimit } = await import('p-limit');
+                    const limit = pLimit(10);
+                    let i = 0;
+                    for (; ; ) {
+                        limit(() => new Promise(() => {}));
+                        console.log(++i);
+                    }`),
+                measureLimit(/* js */ `
+                    const { default: pLimit } = require('@sugoroku-y/p-limit');
+                    const limit = pLimit(10);
+                    let i = 0;
+                    for (; ; ) {
+                        limit(() => new Promise(() => {}));
+                        console.log(++i);
+                    }`),
+            ]);
+            expect(mine).toBeGreaterThan(original);
+            console.log(`original: ${original}, mine: ${mine}`);
+        },
+        120000,
+    );
 });
 
 function timeout(elapse: number): Promise<void> {

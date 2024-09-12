@@ -7,6 +7,7 @@ import Queue3 from './performance/Queue3';
 import Queue4 from './performance/Queue4';
 import Queue5 from './performance/Queue5';
 import Queue6 from './performance/Queue6';
+import { measureLimit } from './measureLimit';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- ts-jestで実行時にはエラーにならないので@ts-ignoreを使う
 // @ts-ignore 型としてのimportなのでCommonJSかESModuleかは関係ない
@@ -89,6 +90,32 @@ describe('Queue', () => {
         expect(queue.size).toBe(Queue.MAX_COUNT + 1);
         expect([...queue].every((e, i) => e === i)).toBe(true);
     });
+    test.performance(
+        'limit',
+        async () => {
+            const [yoctoQ, myQueue] = await Promise.all([
+                measureLimit(/* js */ `
+                    const { default: Q } = await import('yocto-queue');
+                    const q = new Q();
+                    let i = 0;
+                    for (; ; ) {
+                        q.enqueue(() => new Promise(() => {}));
+                        console.log(++i);
+                    }`),
+                measureLimit(/* js */ `
+                    const { Queue: Q } = require('./lib/Queue');
+                    const q = new Q();
+                    let i = 0;
+                    for (; ; ) {
+                        q.enqueue(() => new Promise(() => {}));
+                        console.log(++i);
+                    }`),
+            ]);
+            expect(myQueue).toBeGreaterThan(yoctoQ);
+            console.log(`yocto-queue: ${yoctoQ}, ./lib/Queue: ${myQueue}`);
+        },
+        600000,
+    );
     describe('performance', () => {
         jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
