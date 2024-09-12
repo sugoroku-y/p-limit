@@ -35,6 +35,7 @@ describe('Queue', () => {
         queue.enqueue(3);
         expect([...queue]).toEqual([1, 2, 3]);
         log.push(queue.dequeue());
+        expect([...queue]).toEqual([2, 3]);
         log.push(queue.dequeue());
         log.push(queue.dequeue());
         log.push(queue.dequeue());
