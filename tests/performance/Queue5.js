@@ -1,89 +1,86 @@
-const blockSize = 4096;
+const Queue = require('../../lib/Queue');
 
 /**
- * The light weight queue.
- * @returns The instance of the light weight queue.
+ * 配列と1方向リンクリストを使用したキュー
+ *
+ * unshiftはコストが高いので先頭のインデックスを増やしていく。
+ * @template T
+ * @returns {Queue<T>} Queue<T>のインスタンス
  */
 module.exports = function Queue5() {
-    /** @typedef {{values:unknown[];end:number;next?:Node|undefined}} Node */
-    /** @typedef {{head:Node;tail: Node}} Terminal */
+    /** @typedef {T[] & {next?: Node | undefined}} Node */
 
-    /** @type {Terminal | undefined} */
-    let terminal;
-    let head = 0;
-    let size = 0;
+    /** @type {Node}} */
+    let head;
+    /** @type {number}} */
+    let headIndex;
+    /** @type {Node}} */
+    let tail;
+    clear();
 
-    function clear() {
-        terminal = undefined;
-        head = 0;
-        size = 0;
-    }
-
+    /**
+     * キューに値を追加する。
+     * @param {T} value 追加する値
+     */
     function enqueue(value) {
-        if (!terminal) {
-            const head = {
-                values: Array(blockSize),
-                end: 0,
-                next: undefined,
-            };
-            const tail = head;
-            terminal = { head, tail };
-        } else if (terminal.tail.end >= terminal.tail.values.length) {
-            terminal.tail.next = {
-                values: Array(blockSize),
-                end: 0,
-                next: undefined,
-            };
-            terminal.tail = terminal.tail.next;
+        if (tail.length >= Queue.MAX_COUNT) {
+            tail = tail.next = [];
         }
-        terminal.tail.values[terminal.tail.end++] = value;
-        ++size;
+        tail.push(value);
     }
 
     function dequeue() {
-        if (!terminal) {
+        if (headIndex >= head.length) {
             // キューが空ならundefinedを返す。
             return undefined;
         }
-        const {
-            next,
-            values: { [head]: value },
-        } = terminal.head;
-        terminal.head.values[head++] = undefined;
-        if (head >= terminal.head.end) {
-            if (next) {
+        const value = head[headIndex];
+        // 参照を切るためにundefinedを代入
+        head[headIndex] = undefined;
+
+        if (++headIndex >= head.length) {
+            if (head.next) {
                 // 先頭を次のNodeに差し替え
-                terminal.head = next;
+                head = head.next;
+                headIndex = 0;
             } else {
                 // 空になったのでクリア
-                terminal = undefined;
+                clear();
             }
-            head = 0;
         }
-        --size;
         return value;
     }
 
     function peek() {
-        return terminal?.head.values[head];
+        return head[headIndex];
+    }
+
+    function clear() {
+        tail = head = [];
+        headIndex = 0;
     }
 
     function* iterator() {
-        let start = head;
-        for (let node = terminal?.head; node; node = node.next) {
-            yield* node.values.slice(start, node.end);
-            start = 0;
+        for (let i = headIndex; i < head.length; ++i) {
+            yield head[i];
+        }
+        for (let node = head.next; node; node = node.next) {
+            yield* node;
         }
     }
 
     return {
         get size() {
+            let size = head.length - headIndex;
+            for (let node = head.next; node; node = node.next) {
+                size += node.length;
+            }
             return size;
         },
+        [Symbol.iterator]: iterator,
         enqueue,
         dequeue,
         peek,
         clear,
-        [Symbol.iterator]: iterator,
     };
 };
