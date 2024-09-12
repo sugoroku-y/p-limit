@@ -82,6 +82,11 @@ describe('Queue', () => {
             queue.dequeue();
         }
         expect(queue.size).toBe(0);
+        for (let i = 0; i <= Queue.MAX_COUNT; ++i) {
+            queue.enqueue(i);
+        }
+        expect(queue.size).toBe(Queue.MAX_COUNT + 1);
+        expect([...queue].every((e, i) => e === i)).toBe(true);
     });
     describe('performance', () => {
         jest.retryTimes(3, { logErrorsBeforeRetry: true });
@@ -114,7 +119,7 @@ describe('Queue', () => {
                     });
                     for (const n of order) {
                         results[n].push(await sample(n, count));
-                        if (performance.now() - start > 60000) {
+                        if (performance.now() - start > 20000) {
                             break LOOP;
                         }
                     }
@@ -135,7 +140,7 @@ describe('Queue', () => {
                 // 1.5倍までは許容
                 expect(mResult).toBeLessThan(others['yoctoQ'] * 1.5);
             },
-            70000,
+            30000,
         );
     });
 });
@@ -179,12 +184,7 @@ function avarage(...numbers: number[]): number {
 }
 
 function trimMean(...numbers: number[]): number {
-    const max = Math.max(...numbers);
-    const min = Math.min(...numbers);
-    const trimmed = numbers.filter((e) => e !== max && e !== min);
-    if (trimmed.length === 0) {
-        console.log(numbers);
-        return avarage(...numbers);
-    }
-    return avarage(...trimmed);
+    return avarage(
+        ...(numbers.length > 4 ? numbers.sort().slice(1, -1) : numbers),
+    );
 }

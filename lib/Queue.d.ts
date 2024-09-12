@@ -29,6 +29,6 @@ interface Queue<T> extends Iterable<T> {
  */
 declare function Queue<T>(): Queue<T>;
 declare namespace Queue {
-    var MAX_COUNT: 67108864;
+    var MAX_COUNT: 1048576;
 }
 export { Queue };

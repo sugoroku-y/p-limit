@@ -29,43 +29,68 @@ interface Queue<T> extends Iterable<T> {
  * @returns The instance of the light weight queue.
  */
 function Queue<T>(): Queue<T> {
-    let array: T[] = [];
-    let head = 0;
-    let tail = 0;
-    function enqueue(value: T) {
-        array[tail++] = value;
-        if (tail === Queue.MAX_COUNT) {
-            array = array.slice(head);
-            tail -= head;
-            head = 0;
-        }
+    interface Node extends Array<T> {
+        next?: Node | undefined;
     }
+    let head: Node;
+    let headIndex: number;
+    let tail: Node;
+    clear();
+
+    function enqueue(value: T) {
+        if (tail.length >= Queue.MAX_COUNT) {
+            tail = tail.next = [];
+        }
+        tail.push(value);
+    }
+
     function dequeue() {
-        if (head >= tail) {
+        if (headIndex >= head.length) {
+            // キューが空ならundefinedを返す。
             return undefined;
         }
-        const value = array[head];
+        const value = head[headIndex];
         // 参照を切るためにundefinedを代入
-        array[head++] = undefined as T;
-        if (head >= tail) {
-            head = tail = 0;
+        head[headIndex] = undefined as T;
+
+        if (++headIndex >= head.length) {
+            if (head.next) {
+                // 先頭を次のNodeに差し替え
+                head = head.next;
+                headIndex = 0;
+            } else {
+                // 空になったのでクリア
+                clear();
+            }
         }
         return value;
     }
+
     function peek() {
-        return head < tail ? array[head] : undefined;
+        return head[headIndex];
     }
+
     function clear() {
-        array.length = head = tail = 0;
+        tail = head = [];
+        headIndex = 0;
     }
+
     function* iterator() {
-        for (let i = head; i < tail; ++i) {
-            yield array[i];
+        for (let i = headIndex; i < head.length; ++i) {
+            yield head[i];
+        }
+        for (let node = head.next; node; node = node.next) {
+            yield* node;
         }
     }
+
     return {
         get size() {
-            return tail - head;
+            let size = head.length - headIndex;
+            for (let node = head.next; node; node = node.next) {
+                size += node.length;
+            }
+            return size;
         },
         [Symbol.iterator]: iterator,
         enqueue,
@@ -75,6 +100,6 @@ function Queue<T>(): Queue<T> {
     };
 }
 
-Queue.MAX_COUNT = 0x4000000 as const;
+Queue.MAX_COUNT = 0x100000 as const;
 
 export { Queue };
