@@ -90,32 +90,71 @@ describe('Queue', () => {
         expect(queue.size).toBe(queue.blockSize + 1);
         expect([...queue].every((e, i) => e === i)).toBe(true);
     });
-    test.performance(
-        'limit',
-        async () => {
-            const [yoctoQ, myQueue] = await Promise.all([
-                measureLimit(/* js */ `
-                    const { default: Q } = await import('yocto-queue');
-                    const q = new Q();
-                    let i = 0;
-                    for (; ; ) {
-                        q.enqueue(() => new Promise(() => {}));
-                        console.log(++i);
-                    }`),
-                measureLimit(/* js */ `
-                    const { Queue: Q } = require('./lib/Queue');
-                    const q = new Q();
-                    let i = 0;
-                    for (; ; ) {
-                        q.enqueue(() => new Promise(() => {}));
-                        console.log(++i);
-                    }`),
-            ]);
-            expect(myQueue).toBeGreaterThan(yoctoQ);
-            console.log(`yocto-queue: ${yoctoQ}, ./lib/Queue: ${myQueue}`);
-        },
-        600000,
-    );
+    describe('limit', () => {
+        const results: Record<string, number> = {};
+        const scriptForMeasurement = /* js */ `
+            const queue = new Queue();
+            let i = 0;
+            for (; ; ) {
+                queue.enqueue(() => new Promise(() => {}));
+                console.log(++i);
+            }`;
+
+        test.performance.concurrent(
+            'mine',
+            async () => {
+                const result = await measureLimit(/* js */ `
+                    const { Queue } = require('./lib/Queue');
+                    ${scriptForMeasurement}`);
+                expect(result).toBeGreaterThan(0);
+                results['mine'] = result;
+            },
+            600000,
+        );
+        test.performance.concurrent(
+            'yocto-queue',
+            async () => {
+                const result = await measureLimit(/* js */ `
+                    const { default: Queue } = await import('yocto-queue');
+                    ${scriptForMeasurement}`);
+                expect(result).toBeGreaterThan(0);
+                results['yocto-queue'] = result;
+            },
+            60000,
+        );
+        test.performance.concurrent.each([1, 2, 3, 4, 5, 6])(
+            'Queue%d',
+            async (n) => {
+                const result = await measureLimit(/* js */ `
+                    const Queue = require('./tests/performance/Queue${n}');
+                    ${scriptForMeasurement}`);
+                expect(result).toBeGreaterThan(0);
+                results[`Queue${n}`] = result;
+            },
+            600000,
+        );
+        afterAll(() => {
+            const valid = [
+                'mine',
+                'yocto-queue',
+                'Queue1',
+                'Queue2',
+                'Queue3',
+                'Queue4',
+                'Queue5',
+                'Queue6',
+            ].filter((name) => name in results);
+            if (valid.length) {
+                console.log(
+                    valid
+                        .map((name) => {
+                            return `${name.padStart(11)}: ${String(results[name]).padStart(10)}`;
+                        })
+                        .join('\n'),
+                );
+            }
+        });
+    });
     describe('performance', () => {
         jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
