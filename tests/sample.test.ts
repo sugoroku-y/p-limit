@@ -1,8 +1,4 @@
-import {
-    spawn,
-    type SpawnOptionsWithoutStdio,
-    type SpawnSyncOptionsWithStringEncoding,
-} from 'child_process';
+import { spawn, type SpawnOptionsWithoutStdio } from 'child_process';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { basename, resolve } from 'path';
 
@@ -92,8 +88,7 @@ describe('sample', () => {
             const options = {
                 shell: true,
                 cwd: resolve(__dirname, 'sample', dir),
-                encoding: 'utf8',
-            } satisfies SpawnSyncOptionsWithStringEncoding;
+            } satisfies SpawnOptionsWithoutStdio;
             await rm(options.cwd, { recursive: true, force: true });
             await mkdir(options.cwd, { recursive: true });
             await writeJson(resolve(options.cwd, 'package.json'), {
