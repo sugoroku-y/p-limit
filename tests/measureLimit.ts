@@ -6,6 +6,7 @@ export function measureLimit(script: string) {
         let errorLog: string = '';
         const start = performance.now();
         const e = spawn('node', ['-e', `(async()=>{${script}})()`], {
+            shell: true,
             env: { NODE_DISABLE_COLORS: '1' },
         });
         e.stdout.on('data', (b) => {
