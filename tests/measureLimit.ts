@@ -5,7 +5,7 @@ export function measureLimit(script: string) {
         let count: number | undefined;
         let errorLog: string = '';
         const start = performance.now();
-        const e = spawn('node', ['-e', `(async()=>{${script}})()`], {
+        const e = spawn(process.execPath, ['-e', `(async()=>{${script}})()`], {
             env: { NODE_DISABLE_COLORS: '1' },
         });
         e.stdout.on('data', (b) => {
