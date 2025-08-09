@@ -9,6 +9,7 @@
         "sourceMap": true,
         "esModuleInterop": true,
 
+        "isolatedModules": true,
         "forceConsistentCasingInFileNames": true,
         "strict": true,
         "noImplicitAny": true,
